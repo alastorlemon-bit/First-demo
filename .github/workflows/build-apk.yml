@@ -1,0 +1,75 @@
+name: Build Kiira platformer APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: neon-platformer-main
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out First-demo
+        uses: actions/checkout@v4
+
+      - name: Install Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+
+      - name: Reassemble original v0.2 HTML and bundle Phaser for offline play
+        shell: bash
+        run: |
+          mkdir -p app/src/main/assets
+          cat game/parts/[0-9][0-9].txt > app/src/main/assets/index.html
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('app/src/main/assets/index.html')
+          s=p.read_text(encoding='utf-8')
+          assert len(s)>4_900_000, 'Demo HTML is incomplete'
+          needle="loadPhaser(['https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js','https://unpkg.com/phaser@3.90.0/dist/phaser.min.js']);"
+          assert needle in s, 'Phaser loader changed: inspect source before updating'
+          s=s.replace(needle,"loadPhaser(['phaser.min.js']);")
+          p.write_text(s,encoding='utf-8')
+          PY
+          curl --fail --location --retry 3 'https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js' -o app/src/main/assets/phaser.min.js || curl --fail --location --retry 3 'https://unpkg.com/phaser@3.90.0/dist/phaser.min.js' -o app/src/main/assets/phaser.min.js
+          test -s app/src/main/assets/phaser.min.js
+
+      - name: Build Android debug APK
+        run: gradle :app:assembleDebug --no-daemon --stacktrace
+
+      - name: Name APK
+        run: |
+          mkdir -p release
+          cp app/build/outputs/apk/debug/app-debug.apk release/kiira-neon-platformer-v0.2.apk
+
+      - name: Upload APK as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kiira-neon-platformer-v02
+          path: release/kiira-neon-platformer-v0.2.apk
+          if-no-files-found: error
+
+      - name: Publish downloadable preview APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          if gh release view preview-apk >/dev/null 2>&1; then
+            gh release upload preview-apk release/kiira-neon-platformer-v0.2.apk --clobber
+          else
+            gh release create preview-apk release/kiira-neon-platformer-v0.2.apk --title "Kiira platformer - technical preview" --notes "One-screen Android WebView / Phaser prototype. Original v0.2 HTML and sprite sheets. Debug APK." --prerelease
+          fi
