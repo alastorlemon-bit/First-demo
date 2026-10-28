@@ -53,7 +53,7 @@ public final class MainActivity extends Activity {
     }
 
     @Override
-    protected void onWindowFocusChanged(boolean focus) {
+    public void onWindowFocusChanged(boolean focus) {
         super.onWindowFocusChanged(focus);
         if (focus) immersive();
     }
