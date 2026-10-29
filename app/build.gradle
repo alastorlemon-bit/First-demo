@@ -2,10 +2,10 @@ plugins {
     id 'com.android.application'
 }
 android {
-    namespace 'com.kiira.platformerdemo'
+    namespace 'com.alastorlemon.kiiraplatformer'
     compileSdk 35
     defaultConfig {
-        applicationId 'com.kiira.platformerdemo'
+        applicationId 'com.alastorlemon.kiiraplatformer'
         minSdk 24
         targetSdk 35
         versionCode 2
