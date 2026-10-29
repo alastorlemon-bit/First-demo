@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="theme-color" content="#060b19"><title>Киира — проверка платформера v0.2</title>
+<style>
+*{box-sizing:border-box;-webkit-user-select:none!important;user-select:none!important;-webkit-touch-callout:none!important;-webkit-tap-highlight-color:transparent}*::before,*::after{-webkit-user-select:none!important;user-select:none!important;-webkit-touch-callout:none!important}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#020510;touch-action:none;overscroll-behavior:none;font-family:Arial,sans-serif;user-select:none;-webkit-user-select:none}#game{width:100%;height:100%;display:flex;justify-content:center;align-items:center}canvas{max-width:100%;max-height:100%;display:block}#status{position:absolute;left:0;right:0;top:40%;color:#e0faff;text-align:center;font-size:16px;padding:15px;pointer-events:none;text-shadow:0 2px 6px black;z-index:3}#controls{position:absolute;inset:0;pointer-events:none;z-index:5}.pad{position:absolute;width:min(26vw,125px);height:min(26vw,125px);max-height:26vh;aspect-ratio:1;border:2px solid #85c9e5aa;border-radius:50%;background:#122f46a9;box-shadow:0 0 16px #0af5 inset,0 0 8px #0008;pointer-events:auto;touch-action:none}.pad:before{content:'';position:absolute;left:50%;top:50%;width:34%;height:34%;border:2px solid #aeecff;border-radius:50%;transform:translate(-50%,-50%);left:calc(50% + var(--jx,0px));top:calc(50% + var(--jy,0px));background:#2f86b5a8;pointer-events:none}.pad:after{content:attr(data-label);position:absolute;left:50%;top:-19px;transform:translateX(-50%);white-space:nowrap;color:#cef9ff;font-size:11px;opacity:.85;pointer-events:none}#move{left:2.4%;bottom:5%}#jump{position:absolute;right:2.4%;bottom:8%;width:min(10vw,67px);height:min(10vw,67px);max-height:17vh;max-width:17vh;border-radius:50%;border:2px solid #ffb9e7;background:#752d75b8;color:#fff;font:bold clamp(10px,1.6vw,15px) Arial;box-shadow:0 0 21px #f13ca77a;pointer-events:auto;touch-action:none}#jump:active{background:#d839ab}#menu{position:absolute;right:9px;top:9px;z-index:6;padding:6px 9px;background:#0d2437ad;color:#dbf8ff;border:1px solid #3d8ba5a8;border-radius:6px;font:11px Arial;pointer-events:auto}#hint{position:absolute;bottom:2px;left:50%;transform:translateX(-50%);color:#c1e7f0ad;font-size:10px;white-space:nowrap;z-index:4;pointer-events:none}#dbg{display:none;position:absolute;right:9px;top:45px;background:#081625ec;padding:8px;color:white;border:1px solid #307b95;border-radius:8px;z-index:6;max-width:220px;font:12px Arial;pointer-events:auto}#dbg label{display:block;margin:7px 0}#dbg input{width:100%;accent-color:cyan}#dbg button{font-size:12px;background:#12425d;color:#fff;border:1px solid #59bfe9;border-radius:5px;padding:5px}
+@media (orientation:portrait){#status{top:30%}#move{bottom:7%}#jump{bottom:11%}}
+</style></head><body>
+<div id="game"></div><div id="status">Загрузка кадров и игрового движка…</div>
+<div id="controls"><div id="move" class="pad" data-label="СКАНЕР / ХОД"></div><button id="jump">ПРЫЖОК</button></div>
+<button id="menu">ФИЗИКА ⚙</button><div id="dbg"><label>Скорость: <span id="speedV">205</span><input id="speed" type="range" min="100" max="320" value="205"></label><label>Прыжок: <span id="jumpV">420</span><input id="power" type="range" min="260" max="590" value="420"></label><label>Гравитация: <span id="gravV">900</span><input id="grav" type="range" min="500" max="1450" value="900"></label><button id="reset">Сбросить позицию</button></div><div id="hint">Стик: слегка — сканер, сильнее — ход · кнопка — прыжок</div>
+<script>var ASSETS={};</script>
+<script src="chunks/bg_00.js"></script>
+<script src="chunks/bg_01.js"></script>
+<script src="chunks/bg_02.js"></script>
+<script src="chunks/bg_03.js"></script>
+<script src="chunks/bg_04.js"></script>
+<script src="chunks/idle_00.js"></script>
+<script src="chunks/run_00.js"></script>
+<script src="chunks/run_01.js"></script>
+<script src="chunks/run_02.js"></script>
+<script src="chunks/run_03.js"></script>
+<script src="chunks/jump_00.js"></script>
+<script src="chunks/jump_01.js"></script>
+<script src="chunks/jump_02.js"></script>
+<script>
+
+const control={move:0,angle:-0.10,jumpQueued:false};
+const MOVE_THRESHOLD=.53; // Порог по длине вектора джойстика: 53% радиуса.
+const params={speed:205,jump:420,gravity:900};
+// Один стик: малое отклонение наводит сенсор, движение — только после порога.
+function stick(id,onMove,onStop){
+ const el=document.getElementById(id);let pid=null;
+ function read(ev){
+  const b=el.getBoundingClientRect(),radius=Math.min(b.width,b.height)/2;
+  let x=(ev.clientX-b.left-b.width/2)/radius,y=(ev.clientY-b.top-b.height/2)/radius;
+  const raw=Math.hypot(x,y);
+  if(raw>1){x/=raw;y/=raw}
+  const strength=Math.min(raw,1);
+  el.style.setProperty('--jx',(x*b.width*.33)+'px');
+  el.style.setProperty('--jy',(y*b.height*.33)+'px');
+  onMove(x,y,strength);
+ }
+ el.addEventListener('pointerdown',e=>{e.preventDefault();pid=e.pointerId;el.setPointerCapture(pid);read(e)});
+ el.addEventListener('pointermove',e=>{if(e.pointerId===pid){e.preventDefault();read(e)}});
+ function end(e){if(e.pointerId!==pid)return;pid=null;el.style.setProperty('--jx','0px');el.style.setProperty('--jy','0px');onStop()}
+ el.addEventListener('pointerup',end);el.addEventListener('pointercancel',end);
+}
+stick('move',(x,y,strength)=>{
+ if(strength>.12)control.angle=Math.atan2(y,x);
+ // Чистое наведение вверх/вниз не заставляет героиню бежать.
+ control.move=(strength>=MOVE_THRESHOLD&&Math.abs(x)>.20)?Math.sign(x):0;
+},()=>control.move=0);
+// На Android долгие касания не должны выделять текст и открывать меню.
+document.addEventListener('selectstart',e=>e.preventDefault());
+document.addEventListener('contextmenu',e=>e.preventDefault());
+document.addEventListener('dragstart',e=>e.preventDefault());
+document.getElementById('jump').addEventListener('pointerdown',e=>{e.preventDefault();control.jumpQueued=true});
+document.getElementById('menu').onclick=()=>{const d=document.getElementById('dbg');d.style.display=d.style.display==='block'?'none':'block'};
+[['speed','speedV','speed'],['power','jumpV','jump'],['grav','gravV','gravity']].forEach(([id,label,key])=>{let e=document.getElementById(id);e.oninput=()=>{params[key]=+e.value;document.getElementById(label).textContent=e.value}});
+let resetFn=null;document.getElementById('reset').onclick=()=>resetFn?.();
+function initGame(){if(typeof Phaser==='undefined'){document.getElementById('status').textContent='Phaser не загрузился: для первого открытия нужен интернет.';return}
+const W=960,H=540;
+class Demo extends Phaser.Scene{
+constructor(){super('Demo');this.state='idle';this.stateTime=0;this.previousGround=false;this.aimed=null;this.items=0;this.camAngle=-0.10;this.respawn={x:110,y:278};}
+preload(){this.load.image('screen',ASSETS.bg);this.load.spritesheet('kiira_idle',ASSETS.idle,{frameWidth:512,frameHeight:512});this.load.spritesheet('kiira_run',ASSETS.run,{frameWidth:512,frameHeight:512});this.load.spritesheet('kiira_jump',ASSETS.jump,{frameWidth:512,frameHeight:512})}
+create(){document.getElementById('status').style.display='none';this.add.image(W/2,H/2,'screen').setDisplaySize(W,H).setDepth(0);
+// Исходный фон НЕ меняется: затемнение игровым слоем.
+this.add.rectangle(W/2,H/2,W,H,0x020713,0.51).setDepth(4);
+this.lightGraphics=this.add.graphics().setDepth(10);this.blocksGraphics=this.add.graphics().setDepth(13);this.sensorGraphics=this.add.graphics().setDepth(45);
+this.physics.world.setBounds(0,0,W,610);this.physics.world.gravity.y=0;
+this.blocks=[];const add=(a,b,y,type='solid',auto=true)=>{let g=this.add.zone((a+b)/2,y+4,b-a,8);this.physics.add.existing(g,true);const p={a,b,y,type,active:auto,progress:0,remaining:0,breakTime:0,obj:g};g.body.enable=auto;this.blocks.push(p);return p};
+add(0,194,277);add(194,302,279);add(302,380,280,'charge',false);add(451,622,287);add(637,756,287,'timed',false);add(757,960,258);
+add(0,245,406);add(316,410,426);add(410,530,426,'crumble');add(530,615,426);add(637,785,413,'charge',false);add(790,960,407);
+// Физическое тело неизменной формы, НЕ меняет размер при смене кадров.
+this.actor=this.add.zone(110,278-20,19,40);this.physics.add.existing(this.actor,false);this.actor.body.setSize(19,40).setAllowGravity(true).setCollideWorldBounds(true).setMaxVelocity(340,900);
+for(let b of this.blocks){this.physics.add.collider(this.actor,b.obj)}
+this.visual=this.add.sprite(110,278,'kiira_idle',0).setOrigin(.5,1).setScale(.131).setDepth(40);
+this.anims.create({key:'idle',frames:this.anims.generateFrameNumbers('kiira_idle',{frames:[0,1,2,1]}),frameRate:4,repeat:-1});
+this.anims.create({key:'run',frames:this.anims.generateFrameNumbers('kiira_run',{frames:[0,1,2,3,4,5,6,7]}),frameRate:12,repeat:-1});
+this.visual.play('idle');this.state='idle';this.previousGround=true;
+this.collectibles=[{x:256,y:252},{x:502,y:258},{x:851,y:231},{x:341,y:399},{x:716,y:378}].map((p,i)=>({...p,got:false,index:i}));
+this.orbs=this.add.graphics().setDepth(18);
+this.label=this.add.text(479,510,'Заряди мост лучом · временный мост гаснет', {fontFamily:'Arial',fontSize:'13px',color:'#c7eefe',stroke:'#000',strokeThickness:3}).setOrigin(.5).setDepth(49);
+this.keyboard=this.input.keyboard.addKeys({left:'LEFT',right:'RIGHT',a:'A',d:'D',jump:'SPACE',w:'W',up:'UP',q:'Q',e:'E'});
+this.input.keyboard.on('keydown-SPACE',()=>{control.jumpQueued=true});this.input.keyboard.on('keydown-W',()=>{control.jumpQueued=true});this.input.keyboard.on('keydown-UP',()=>{control.jumpQueued=true});
+this.respawnToStart=()=>{this.actor.body.reset(this.respawn.x,this.respawn.y-20);this.actor.body.setVelocity(0,0);this.state='idle';this.stateTime=0;this.previousGround=false;};resetFn=this.respawnToStart;
+}
+setState(state){if(this.state===state)return;this.state=state;this.stateTime=0;if(state==='idle')this.visual.play('idle',true);if(state==='run')this.visual.play('run',true);if(['push','rise','fall','land'].includes(state))this.visual.anims.stop()}
+fixedJumpPose(frame){if(this.visual.texture.key!=='kiira_jump'||this.visual.frame.name!==frame)this.visual.setTexture('kiira_jump',frame)}
+update(time,ms){let dt=Math.min(ms/1000,.04);let body=this.actor.body;body.setGravityY(params.gravity);let k=this.keyboard;
+let axis=control.move;if(k.left.isDown||k.a.isDown)axis=-1;if(k.right.isDown||k.d.isDown)axis=1;
+body.setVelocityX(axis*params.speed);
+if(Math.abs(axis)>.07)this.visual.setFlipX(axis<0);
+if(k.q.isDown)control.angle-=dt*1.65;if(k.e.isDown)control.angle+=dt*1.65;this.camAngle=control.angle;
+let grounded=body.blocked.down||body.touching.down;
+if(this.state==='push') {body.setVelocityY(0);this.stateTime+=ms;this.fixedJumpPose(1);if(this.stateTime>=85){body.setVelocityY(-params.jump);this.setState('rise');}}
+else if(this.state==='land'){this.stateTime+=ms;this.fixedJumpPose(this.stateTime<95?1:0);if(this.stateTime>=200)this.setState(Math.abs(axis)>.1?'run':'idle')}
+else {
+ if(control.jumpQueued&&grounded){this.setState('push');this.fixedJumpPose(1)}
+ else if(!grounded){
+  if(body.velocity.y<0){if(this.state!=='rise')this.setState('rise');this.stateTime+=ms;this.fixedJumpPose(this.stateTime>100||body.velocity.y> -95?3:2)}
+  else{this.setState('fall');this.fixedJumpPose(2)}
+ }else if(!this.previousGround){this.setState('land');this.fixedJumpPose(1)}
+ else if(this.state==='idle'||this.state==='run'||this.state==='fall'||this.state==='rise')this.setState(Math.abs(axis)>.12?'run':'idle');
+ }
+ control.jumpQueued=false;
+ if(this.state==='push'||this.state==='land')grounded=true;
+ this.previousGround=grounded;
+ const footY=this.actor.y+20;this.visual.setPosition(this.actor.x,footY+1);
+ if(this.actor.y>575)this.respawnToStart();
+ // Постоянные/временные платформы — свет даёт заряд только при наведении конуса.
+ let ox=this.actor.x,oy=footY-52,ang=this.camAngle,rad=.33,dirx=Math.cos(ang),diry=Math.sin(ang);
+ this.lightGraphics.clear();this.lightGraphics.fillStyle(0x45caff,.09);this.lightGraphics.fillTriangle(ox,oy,ox+280*Math.cos(ang-rad),oy+280*Math.sin(ang-rad),ox+280*Math.cos(ang+rad),oy+280*Math.sin(ang+rad));this.lightGraphics.fillStyle(0x9cefff,.12);this.lightGraphics.fillTriangle(ox,oy,ox+260*Math.cos(ang-.12),oy+260*Math.sin(ang-.12),ox+260*Math.cos(ang+.12),oy+260*Math.sin(ang+.12));
+ this.lightGraphics.lineStyle(1,0x76cfff,.16);this.lightGraphics.lineBetween(ox,oy,ox+280*Math.cos(ang-rad),oy+280*Math.sin(ang-rad));this.lightGraphics.lineBetween(ox,oy,ox+280*Math.cos(ang+rad),oy+280*Math.sin(ang+rad));
+ this.sensorGraphics.clear();this.sensorGraphics.lineStyle(3,0x212a44,.95);this.sensorGraphics.lineBetween(ox,footY-42,ox,footY-58);let sx=ox,sy=footY-59;this.sensorGraphics.fillStyle(0x13243d,1).fillCircle(sx,sy,5);this.sensorGraphics.fillStyle(0x89ecff,1).fillCircle(sx+2*Math.cos(ang),sy+2*Math.sin(ang),3);
+ this.blocksGraphics.clear();this.aimed=null;
+ for(const p of this.blocks){if(p.type==='solid')continue;
+  let px=(p.a+p.b)/2,py=p.y+3,vx=px-ox,vy=py-oy,dist=Math.hypot(vx,vy),dot=(vx*dirx+vy*diry)/(dist||1),lit=dist<295&&dot>Math.cos(rad);
+  if(p.type==='charge'||p.type==='timed'){
+   if(lit){p.progress=Math.min(1,p.progress+dt*1.7);this.aimed=p;if(p.progress>=1){p.active=true;if(p.type==='timed')p.remaining=3.3}}
+   else if(!p.active)p.progress=Math.max(0,p.progress-dt*.22);
+   if(p.type==='timed'&&p.active&&!lit){p.remaining-=dt;if(p.remaining<=0){p.active=false;p.progress=0}}
+  }
+  if(p.type==='crumble'&&grounded&&footY>=p.y-3&&footY<=p.y+11&&ox>=p.a&&ox<=p.b){p.breakTime+=dt;if(p.breakTime>1.0){p.active=false;p.remaining=1.8}}
+  if(p.type==='crumble'&&!p.active){p.remaining-=dt;if(p.remaining<=0){p.active=true;p.breakTime=0}}
+  p.obj.body.enable=p.active;
+  let alpha=p.active?1:(p.progress>.02?p.progress*.9:.11),color=p.type==='timed'?0xff5cc8:p.type==='crumble'?0xff4665:0x55deff;
+  if(p.type==='crumble'&&p.breakTime>.45)alpha*=Math.sin(time*.032)>0?.95:.3;
+  if(p.type==='timed'&&p.active)alpha*=Math.max(.2,Math.min(1,p.remaining/1.3));
+  // Процедурная мягкая неоновая рамка поверх опор, без перерисовки фонового изображения.
+  this.blocksGraphics.fillStyle(color,.09*alpha).fillRect(p.a,p.y,p.b-p.a,24);
+  this.blocksGraphics.lineStyle(9,color,.08*alpha).strokeRect(p.a+2,p.y+2,p.b-p.a-4,20);
+  this.blocksGraphics.lineStyle(2,color,.82*alpha).strokeRect(p.a+2,p.y+2,p.b-p.a-4,20);
+  this.blocksGraphics.lineStyle(1,0xffffff,.4*alpha).lineBetween(p.a+4,p.y+2,p.b-4,p.y+2);
+ }
+ // Декоративные собираемые искры (один проход через них).
+ this.orbs.clear();for(let c of this.collectibles){if(c.got)continue;let cy=c.y+Math.sin(time*.003+c.index)*4;if(Math.hypot(ox-c.x,footY-25-cy)<26){c.got=true;this.items++;continue}
+ this.orbs.lineStyle(2,0xa5f8ff,.9);this.orbs.fillStyle(0x75ebff,.3);this.orbs.fillTriangle(c.x,cy-9,c.x-6,cy,c.x+6,cy);this.orbs.fillTriangle(c.x,cy+9,c.x-6,cy,c.x+6,cy);
+ }
+ this.label.setText('Искры: '+this.items+'/'+this.collectibles.length+'   ·   '+(this.aimed?'ЗАРЯДКА '+Math.round(this.aimed.progress*100)+'%':'Наведи сенсор на пунктирные мосты'));
+ }
+}
+new Phaser.Game({type:Phaser.AUTO,width:W,height:H,parent:'game',transparent:false,backgroundColor:'#05091a',scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH},physics:{default:'arcade',arcade:{debug:false}},scene:[Demo],render:{pixelArt:false,antialias:true}});
+}
+function loadPhaser(urls){const s=document.createElement('script');s.src=urls[0];s.onload=initGame;s.onerror=()=>{s.remove();if(urls.length>1)loadPhaser(urls.slice(1));else document.getElementById('status').textContent='Phaser недоступен. Подключись к интернету и открой файл снова.'};document.head.appendChild(s)}
+loadPhaser(['https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js','https://unpkg.com/phaser@3.90.0/dist/phaser.min.js']);
+</script></body></html>
