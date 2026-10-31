@@ -151,8 +151,61 @@ def patch(html):
     html = html.replace('платформера v0.2','платформера v0.3')
     return html
 
+def upgrade_v04(html):
+    html=one(html,
+        'right:1.4%;bottom:2%;width:min(23vw,146px);height:min(23vw,146px);max-height:33vh;max-width:33vh;aspect-ratio:1;border:2px solid #ff91d0b5;',
+        'right:max(10px,env(safe-area-inset-right));bottom:max(8px,env(safe-area-inset-bottom));width:min(34vw,228px,54vh);height:min(34vw,228px,54vh);aspect-ratio:1;border:5px solid #ff91d0c9;',
+        'aim control size')
+    html=one(html,
+        'width:46%;height:46%;border-radius:50%;border:2px solid #ffb9e7;',
+        'width:42%;height:42%;min-width:72px;min-height:72px;border-radius:50%;border:2px solid #ffb9e7;',
+        'jump button within ring')
+    html=one(html,
+        'width:11px;height:11px;border-radius:50%;transform:translate(-50%,-50%);background:#fbadf0;',
+        'width:17px;height:17px;border-radius:50%;transform:translate(-50%,-50%);background:#fbadf0;',
+        'aim marker')
+    html=one(html,
+        "const r=Math.min(b.width,b.height)*.39;",
+        "const r=Math.min(b.width,b.height)*.38;",
+        'aim indicator radius')
+    html=one(html,
+        '<button id="soundToggle" type="button">ЗВУК: ВКЛ</button>',
+        '<div id="perfInfo" style="font:11px Arial;color:#bce9fd;margin:6px 0">FPS: — · макс. кадр: —</div><button id="soundToggle" type="button">ЗВУК: ВКЛ</button>',
+        'physics diagnostics')
+    html=one(html,
+        'this.blocksGraphics.clear();this.aimed=null;',
+        "// Animate decorative geometry at ~30 Hz; physics and beam still run at the native rate.\n this._decorMs=(this._decorMs??32)+ms;const drawDecor=this._decorMs>=32;\n if(drawDecor){this._decorMs%=32;this.blocksGraphics.clear();}\n this.aimed=null;",
+        'decoration cadence')
+    html=one(html,
+        '  // Процедурная мягкая неоновая рамка поверх опор, без перерисовки фонового изображения.\n  this.blocksGraphics.fillStyle',
+        '  if(drawDecor){\n  // Процедурная мягкая неоновая рамка поверх опор, без перерисовки фонового изображения.\n  this.blocksGraphics.fillStyle',
+        'guard graphics draw')
+    html=one(html,
+        '  this.blocksGraphics.lineStyle(1,0xffffff,.4*alpha).lineBetween(p.a+4,p.y+2,p.b-4,p.y+2);',
+        '  this.blocksGraphics.lineStyle(1,0xffffff,.4*alpha).lineBetween(p.a+4,p.y+2,p.b-4,p.y+2);\n  }',
+        'close graphics guard')
+    html=one(html,
+        'this.orbs.clear();for(let c of this.collectibles)',
+        'if(drawDecor)this.orbs.clear();for(let c of this.collectibles)',
+        'orbs cadence')
+    html=one(html,
+        ' this.orbs.lineStyle(2,0xa5f8ff,.9);',
+        ' if(drawDecor){this.orbs.lineStyle(2,0xa5f8ff,.9);',
+        'guard orb draw')
+    html=one(html,
+        'this.orbs.fillTriangle(c.x,cy+9,c.x-6,cy,c.x+6,cy);',
+        'this.orbs.fillTriangle(c.x,cy+9,c.x-6,cy,c.x+6,cy);}',
+        'close orb guard')
+    html=one(html,
+        "this.label.setText('Искры: '+this.items+'/'+this.collectibles.length+'   ·   '+(this.aimed?'ЗАРЯДКА '+Math.round(this.aimed.progress*100)+'%':'Наведи правым кольцом на пунктирные мосты'));",
+        "// Text rasterization is not needed every animation frame.\n this._hudMs=(this._hudMs??120)+ms;if(this._hudMs>=120){this._hudMs%=120;\n const label='Искры: '+this.items+'/'+this.collectibles.length+'   ·   '+(this.aimed?'ЗАРЯДКА '+Math.round(this.aimed.progress*100)+'%':'Наведи правым кольцом на пунктирные мосты');\n if(this._lastLabel!==label){this.label.setText(label);this._lastLabel=label;}}\n // Expose frame pacing on the phone, but update the DOM once per second only.\n const pf=this._perf||(this._perf={elapsed:0,count:0,worst:0});pf.elapsed+=ms;pf.count++;pf.worst=Math.max(pf.worst,ms);\n if(pf.elapsed>=1000){const readout=document.getElementById('perfInfo');readout.textContent='FPS: '+Math.round(1000*pf.count/pf.elapsed)+' · макс. кадр: '+Math.round(pf.worst)+' мс';pf.elapsed=0;pf.count=0;pf.worst=0;}",
+        'hud and perf instrumentation')
+    html=one(html,'платформера v0.3','платформера v0.4','title version')
+    return html
+
+
 if __name__ == '__main__':
     src = Path(sys.argv[1]); dst=Path(sys.argv[2]) if len(sys.argv)>2 else src
-    output=patch(src.read_text('utf-8'))
+    output=upgrade_v04(patch(src.read_text('utf-8')))
     dst.write_text(output,'utf-8')
     print(f'Patched {dst} ({len(output)} chars)')
