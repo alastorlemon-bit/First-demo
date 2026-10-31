@@ -204,8 +204,58 @@ def upgrade_v04(html):
     return html
 
 
+def upgrade_v05(s):
+    # Both dimensions must share the same constraint; CSS max-height had squeezed a joystick into an ellipse.
+    s=one(s,
+        'width:min(26vw,125px);height:min(26vw,125px);max-height:26vh;aspect-ratio:1;',
+        'width:min(26vw,125px,26vh);height:min(26vw,125px,26vh);aspect-ratio:1;',
+        'circular movement pad')
+    # Keep wide touch zone, restore a restrained visual ring with a pseudosurface.
+    s=one(s,
+        'aspect-ratio:1;border:5px solid #ff91d0c9;border-radius:50%;background:#34113b75;box-shadow:0 0 17px #dc29a44b inset,0 0 17px #ff32ba4e;pointer-events:auto;touch-action:none;overflow:visible}',
+        'aspect-ratio:1;border:0;border-radius:50%;background:transparent;box-shadow:none;pointer-events:auto;touch-action:none;overflow:visible}',
+        'invisible large aiming capture zone')
+    s=one(s,
+        "#scanRing:before{content:'СЕНСОР';position:absolute;top:-22px;left:50%;transform:translateX(-50%);color:#ffd2f3;font:11px Arial;white-space:nowrap;pointer-events:none}",
+        "#scanRing:before{content:'';position:absolute;inset:16%;border:2px solid #ff91d0b8;border-radius:50%;background:#34113b3d;box-shadow:0 0 10px #dc29a422 inset,0 0 8px #ff32ba35;pointer-events:none}\n#scanRing .ring-label{position:absolute;top:6%;left:50%;transform:translateX(-50%);color:#ffd2f3;font:11px Arial;white-space:nowrap;pointer-events:none}",
+        'small display ring')
+    s=one(s,
+        'width:42%;height:42%;min-width:72px;min-height:72px;border-radius:50%;',
+        'width:36%;height:36%;min-width:65px;min-height:65px;max-width:82px;max-height:82px;border-radius:50%;',
+        'jump button fits compact display ring')
+    s=one(s,
+        '<div id="scanRing"><button id="jump" type="button">ПРЫЖОК</button></div>',
+        '<div id="scanRing"><span class="ring-label">СЕНСОР</span><button id="jump" type="button">ПРЫЖОК</button></div>',
+        'ring label markup')
+    s=one(s,
+        '<button id="menu">ФИЗИКА ⚙</button>',
+        '<div id="fpsHud" aria-live="off">FPS: — · кадр: —</div><button id="menu">ФИЗИКА ⚙</button>',
+        'fps HUD markup')
+    s=one(s,
+        '#menu{position:absolute;',
+        '#fpsHud{position:absolute;top:max(9px,env(safe-area-inset-top));left:max(10px,env(safe-area-inset-left));z-index:6;padding:4px 7px;border:1px solid #3d8ba557;border-radius:6px;background:#0715239e;color:#c8edff;font:12px/1.3 Arial;pointer-events:none;white-space:nowrap}#menu{position:absolute;',
+        'fps HUD style')
+    s=one(s,
+        'control.move=Math.abs(x)>.13?x:0;',
+        'control.move=Math.abs(x)>=.28?Math.sign(x):0;',
+        'consistent side-scrolling move speed')
+    s=one(s,
+        "el.addEventListener('pointerdown',e=>{e.preventDefault();pid=e.pointerId;el.setPointerCapture(pid);read(e)});",
+        "el.addEventListener('pointerdown',e=>{e.preventDefault();if(pid!==null)return;pid=e.pointerId;el.setPointerCapture(pid);read(e)});",
+        'protect active pointer')
+    s=one(s,
+        'const r=Math.min(b.width,b.height)*.38;',
+        'const r=Math.min(b.width,b.height)*.335;',
+        'align marker with visible ring')
+    s=one(s,
+        "const pf=this._perf||(this._perf={elapsed:0,count:0,worst:0});pf.elapsed+=ms;pf.count++;pf.worst=Math.max(pf.worst,ms);\n if(pf.elapsed>=1000){const readout=document.getElementById('perfInfo');readout.textContent='FPS: '+Math.round(1000*pf.count/pf.elapsed)+' · макс. кадр: '+Math.round(pf.worst)+' мс';pf.elapsed=0;pf.count=0;pf.worst=0;}",
+        "const pf=this._perf||(this._perf={elapsed:0,count:0,worst:0,last:0});\n const now=performance.now(),actual=pf.last?now-pf.last:0;pf.last=now;\n if(actual>0){pf.elapsed+=actual;pf.count++;pf.worst=Math.max(pf.worst,actual);}\n if(pf.elapsed>=1000){const line='FPS: '+Math.round(1000*pf.count/pf.elapsed)+' · кадр: '+Math.round(pf.worst)+' мс';\n const readout=document.getElementById('perfInfo'),hud=document.getElementById('fpsHud');readout.textContent=line;hud.textContent=line;pf.elapsed=0;pf.count=0;pf.worst=0;}",
+        'real frame diagnostic on screen')
+    s=one(s,'платформера v0.4','платформера v0.5','document version title')
+    return s
+
 if __name__ == '__main__':
     src = Path(sys.argv[1]); dst=Path(sys.argv[2]) if len(sys.argv)>2 else src
-    output=upgrade_v04(patch(src.read_text('utf-8')))
+    output=upgrade_v05(upgrade_v04(patch(src.read_text('utf-8'))))
     dst.write_text(output,'utf-8')
     print(f'Patched {dst} ({len(output)} chars)')
