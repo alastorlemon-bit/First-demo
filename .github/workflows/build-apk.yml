@@ -46,6 +46,7 @@ jobs:
           assert "loadPhaser(['phaser.min.js']);" in s, 'Local Phaser loader missing'
           p.write_text(s,encoding='utf-8')
           PY
+          python3 game/audio_controls_patch.py app/src/main/assets/index.html
           curl --fail --location --retry 3 'https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js' -o app/src/main/assets/phaser.min.js || curl --fail --location --retry 3 'https://unpkg.com/phaser@3.90.0/dist/phaser.min.js' -o app/src/main/assets/phaser.min.js
           test -s app/src/main/assets/phaser.min.js
 
@@ -55,13 +56,13 @@ jobs:
       - name: Name APK
         run: |
           mkdir -p release
-          cp app/build/outputs/apk/debug/app-debug.apk release/kiira-neon-platformer-v0.2.apk
+          cp app/build/outputs/apk/debug/app-debug.apk release/kiira-neon-platformer-v0.3.apk
 
       - name: Upload APK as workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: kiira-neon-platformer-v02
-          path: release/kiira-neon-platformer-v0.2.apk
+          name: kiira-neon-platformer-v03
+          path: release/kiira-neon-platformer-v0.3.apk
           if-no-files-found: error
 
       - name: Publish downloadable preview APK
@@ -69,8 +70,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          if gh release view preview-apk >/dev/null 2>&1; then
-            gh release upload preview-apk release/kiira-neon-platformer-v0.2.apk --clobber
+          if gh release view preview-apk-v03 >/dev/null 2>&1; then
+            gh release upload preview-apk-v03 release/kiira-neon-platformer-v0.3.apk --clobber
           else
-            gh release create preview-apk release/kiira-neon-platformer-v0.2.apk --title "Kiira platformer - technical preview" --notes "One-screen Android WebView / Phaser prototype. Original v0.2 HTML and sprite sheets. Debug APK." --prerelease
+            gh release create preview-apk-v03 release/kiira-neon-platformer-v0.3.apk --title "Kiira platformer - technical preview" --notes "One-screen Android WebView / Phaser prototype v0.3. Scanner aiming ring, jump button and procedural audio. Offline Phaser included. Debug APK." --prerelease
           fi
