@@ -64,13 +64,13 @@ jobs:
       - name: Name APK
         run: |
           mkdir -p release
-          cp app/build/outputs/apk/debug/app-debug.apk release/kiira-neon-platformer-v0.10.apk
+          cp app/build/outputs/apk/debug/app-debug.apk release/kiira-neon-platformer-v0.11.apk
 
       - name: Upload APK as workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: kiira-neon-platformer-v10
-          path: release/kiira-neon-platformer-v0.10.apk
+          name: kiira-neon-platformer-v11
+          path: release/kiira-neon-platformer-v0.11.apk
           if-no-files-found: error
 
       - name: Publish downloadable preview APK
@@ -78,8 +78,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          if gh release view preview-apk-v10 >/dev/null 2>&1; then
-            gh release upload preview-apk-v10 release/kiira-neon-platformer-v0.10.apk --clobber
+          if gh release view preview-apk-v11 >/dev/null 2>&1; then
+            gh release upload preview-apk-v11 release/kiira-neon-platformer-v0.11.apk --clobber
           else
-            gh release create preview-apk-v10 release/kiira-neon-platformer-v0.10.apk --title "Kiira platformer - technical preview" --notes "One-screen Android WebView / Phaser prototype v0.10. Scanner aiming ring, jump button and procedural audio. Offline Phaser included. Debug APK." --prerelease
+            gh release create preview-apk-v11 release/kiira-neon-platformer-v0.11.apk --title "Kiira platformer - technical preview" --notes "One-screen Android WebView / Phaser prototype v0.11. Tuned physics, deep darkness and emissive scanner/platform lights. Offline Phaser included. Debug APK." --prerelease
           fi
