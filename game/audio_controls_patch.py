@@ -305,8 +305,40 @@ def upgrade_v06(s):
     s=s.replace('платформера v0.5','платформера v0.6')
     return s
 
+def upgrade_v07(s):
+    old = """let grounded=body.blocked.down||body.touching.down;
+if(this.state==='push') {body.setVelocityY(0);this.stateTime+=ms;this.fixedJumpPose(1);if(this.stateTime>=85){body.setVelocityY(-params.jump);SFX.play('jump');this.setState('rise');}}
+else if(this.state==='land'){this.stateTime+=ms;this.fixedJumpPose(this.stateTime<95?1:0);if(this.stateTime>=200)this.setState(Math.abs(axis)>.1?'run':'idle')}
+else {
+ if(control.jumpQueued&&grounded){this.setState('push');this.fixedJumpPose(1)}
+ else if(!grounded){"""
+    new = """let grounded=body.blocked.down||body.touching.down;
+// Store one tap for a short period so a tap during landing or just before contact is not lost.
+if(control.jumpQueued){this.jumpBufferMs=160;control.jumpQueued=false;}
+else this.jumpBufferMs=Math.max(0,(this.jumpBufferMs||0)-ms);
+if(this.state==='push') {body.setVelocityY(0);this.stateTime+=ms;this.fixedJumpPose(1);if(this.stateTime>=45){body.setVelocityY(-params.jump);this.jumpBufferMs=0;SFX.play('jump');this.setState('rise');}}
+// The landing animation is visual only: the next jump can interrupt it immediately.
+else if(grounded&&this.jumpBufferMs>0){this.jumpBufferMs=0;this.setState('push');this.fixedJumpPose(1);}
+else if(this.state==='land'){this.stateTime+=ms;this.fixedJumpPose(this.stateTime<95?1:0);if(this.stateTime>=200)this.setState(Math.abs(axis)>.1?'run':'idle')}
+else {
+ if(!grounded){"""
+    assert s.count(old)==1, f'animation anchor found {s.count(old)} times'
+    s=s.replace(old,new)
+    # Reset a buffered tap when the player is explicitly reset, not on the next update tick.
+    old_reset="this.state='idle';this.stateTime=0;this.previousGround=false;};resetFn=this.respawnToStart;"
+    new_reset="this.state='idle';this.stateTime=0;this.previousGround=false;this.jumpBufferMs=0;control.jumpQueued=false;};resetFn=this.respawnToStart;"
+    assert s.count(old_reset)==1, f'respawn anchor found {s.count(old_reset)} times'
+    s=s.replace(old_reset,new_reset)
+    assert s.count("control.jumpQueued=false;")==3  # queued consumption, original unconditional, reset
+    # Original unconditional clearing is redundant but harmless; now remove it to keep one source of truth.
+    s=s.replace("\n control.jumpQueued=false;\n if(grounded&&this.state==='run'", "\n if(grounded&&this.state==='run'",1)
+    assert "if(grounded&&this.jumpBufferMs>0)" in s
+    s=s.replace('платформера v0.6','платформера v0.7')
+    return s
+
+
 if __name__ == '__main__':
     src = Path(sys.argv[1]); dst=Path(sys.argv[2]) if len(sys.argv)>2 else src
-    output=upgrade_v06(upgrade_v05(upgrade_v04(patch(src.read_text('utf-8')))))
+    output=upgrade_v07(upgrade_v06(upgrade_v05(upgrade_v04(patch(src.read_text('utf-8'))))))
     dst.write_text(output,'utf-8')
     print(f'Patched {dst} ({len(output)} chars)')
