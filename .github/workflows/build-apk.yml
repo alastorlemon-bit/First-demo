@@ -55,6 +55,27 @@ jobs:
           p.write_text(s,encoding='utf-8')
           PY
           python3 game/audio_controls_patch.py app/src/main/assets/index.html
+          # Validate the actual generated JS, not just the Python patch source.
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          html=Path('app/src/main/assets/index.html').read_text('utf-8')
+          scripts=re.findall(r'<script\b[^>]*>(.*?)</script>',html,re.S)
+          assert scripts, 'No inline game script found'
+          game=scripts[-1]
+          assert 'scene_v15_darkness' in game
+          assert 'paintCompositeLighting(this.compositeLight,ox,oy,outer,mid,core)' in game
+          assert 'this.revealBackground' not in game
+          assert 'this.revealMaskGraphics' not in game
+          assert 'this.midArchitecture' in game
+          assert 'this.staticLampGlow' in game
+          assert 'this.platformFaces' in game
+          assert 'this.sceneVignette' in game
+          assert 'jump:460,gravity:640' in game
+          Path('/tmp/neon-v15-check.js').write_text(game,'utf-8')
+          print('Renderer single-pass and all visual systems present:',len(game),'JS chars')
+          PY
+          node --check /tmp/neon-v15-check.js
           curl --fail --location --retry 3 'https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js' -o app/src/main/assets/phaser.min.js || curl --fail --location --retry 3 'https://unpkg.com/phaser@3.90.0/dist/phaser.min.js' -o app/src/main/assets/phaser.min.js
           test -s app/src/main/assets/phaser.min.js
 
@@ -64,13 +85,13 @@ jobs:
       - name: Name APK
         run: |
           mkdir -p release
-          cp app/build/outputs/apk/debug/app-debug.apk release/kiira-neon-platformer-v0.14.apk
+          cp app/build/outputs/apk/debug/app-debug.apk release/kiira-neon-platformer-v0.15.apk
 
       - name: Upload APK as workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: kiira-neon-platformer-v14
-          path: release/kiira-neon-platformer-v0.14.apk
+          name: kiira-neon-platformer-v15
+          path: release/kiira-neon-platformer-v0.15.apk
           if-no-files-found: error
 
       - name: Publish downloadable preview APK
@@ -78,8 +99,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          if gh release view preview-apk-v14 >/dev/null 2>&1; then
-            gh release upload preview-apk-v14 release/kiira-neon-platformer-v0.14.apk --clobber
+          if gh release view preview-apk-v15 >/dev/null 2>&1; then
+            gh release upload preview-apk-v15 release/kiira-neon-platformer-v0.15.apk --clobber
           else
-            gh release create preview-apk-v14 release/kiira-neon-platformer-v0.14.apk --title "Kiira platformer - technical preview" --notes "One-screen Android WebView / Phaser prototype v0.14. Graphics diagnostic: tap top-centre label to switch BASE/DEPTH/LAMPS/VIGNETTE/ALL and compare Android FPS; gameplay preserved. Offline Phaser included. Debug APK." --prerelease
+            gh release create preview-apk-v15 release/kiira-neon-platformer-v0.15.apk --title "Kiira platformer - technical preview" --notes "One-screen Android WebView / Phaser prototype v0.15. Renderer optimized: single composite lightmap, full perspective/lamps/vignette/3D preserved; physics unchanged. Offline Phaser included. Debug APK." --prerelease
           fi
