@@ -675,10 +675,93 @@ this.camAngle=Math.abs(difference)<.0006?control.angle:this.camAngle+difference*
  return html
 
 
+def upgrade_v11(html):
+    html=one(html,'const params={speed:205,jump:420,gravity:900};',
+                 'const params={speed:205,jump:460,gravity:640};','physics defaults')
+    html=one(html,'id="jumpV">420</span>','id="jumpV">460</span>','jump value label')
+    html=one(html,'id="power" type="range" min="260" max="590" value="420"',
+                 'id="power" type="range" min="260" max="590" value="460"','jump slider value')
+    html=one(html,'id="gravV">900</span>','id="gravV">640</span>','gravity value label')
+    html=one(html,'id="grav" type="range" min="500" max="1450" value="900"',
+                 'id="grav" type="range" min="500" max="1450" value="640"','gravity slider value')
+    # Dark areas should be genuinely dark; approved background remains unchanged.
+    html=one(html,'this.add.rectangle(W/2,H/2,W,H,0x020713,0.51)',
+                 'this.add.rectangle(W/2,H/2,W,H,0x020713,0.74)','ambient darkness')
+    # With more ambient darkness, revealed background can be substantially brighter.
+    html=one(html,"this.revealBackground=this.add.image(W/2,H/2,'screen').setDisplaySize(W,H).setDepth(5).setAlpha(.30);",
+                 "this.revealBackground=this.add.image(W/2,H/2,'screen').setDisplaySize(W,H).setDepth(5).setAlpha(.43);",'outer light band')
+    html=one(html,"this.revealMid=this.add.image(W/2,H/2,'screen').setDisplaySize(W,H).setDepth(5.5).setAlpha(.39);",
+                 "this.revealMid=this.add.image(W/2,H/2,'screen').setDisplaySize(W,H).setDepth(5.5).setAlpha(.52);",'middle light band')
+    html=one(html,"this.revealFocus=this.add.image(W/2,H/2,'screen').setDisplaySize(W,H).setDepth(6).setAlpha(.28);",
+                 "this.revealFocus=this.add.image(W/2,H/2,'screen').setDisplaySize(W,H).setDepth(6).setAlpha(.38);",'focused light band')
+    html=one(html,
+      'this.lightGraphics=this.add.graphics().setDepth(10);this.blocksGraphics=this.add.graphics().setDepth(13);this.sensorGraphics=this.add.graphics().setDepth(45);',
+      '''this.lightGraphics=this.add.graphics().setDepth(10);
+// Lightweight additive passes at 30 Hz: no blur filters or dynamic shadow textures.
+this.platformGlow=this.add.graphics().setDepth(12.5).setBlendMode(Phaser.BlendModes.ADD);
+this.blocksGraphics=this.add.graphics().setDepth(13);
+this.sensorGraphics=this.add.graphics().setDepth(45);''','platform glow layer')
+    html=one(html,'this.orbs=this.add.graphics().setDepth(18);',
+      'this.orbGlow=this.add.graphics().setDepth(17.5).setBlendMode(Phaser.BlendModes.ADD);\nthis.orbs=this.add.graphics().setDepth(18);',
+      'collectible glow layer')
+    html=one(html,'function fillBeamMask(graphics,ox,oy,points){',
+      '''// A charge bridge persists after light leaves it; timed bridges keep their original timing.
+function platformChargeRate(type,coverage){
+ const base=.95+.75*Math.min(1,coverage*3);
+ return type==='charge'?base*.78:base;
+}
+function fillBeamMask(graphics,ox,oy,points){''','charge-rate function')
+    html=one(html,'p.progress=Math.min(1,p.progress+dt*(.95+.75*Math.min(1,coverage*3)));',
+      'p.progress=Math.min(1,p.progress+dt*platformChargeRate(p.type,coverage));',
+      'charge rate usage')
+    html=one(html,'this.lightGraphics.fillStyle(0x62d9ff,.028);',
+      'this.lightGraphics.fillStyle(0x62d9ff,.055);','visible pale-cyan beam')
+    html=one(html,'this.sensorGraphics.fillStyle(0x89ecff,1).fillCircle(sx+2*Math.cos(ang),sy+2*Math.sin(ang),3);',
+      '''this.sensorGraphics.fillStyle(0x53dfff,.12).fillCircle(sx,sy,16);
+  this.sensorGraphics.fillStyle(0x7eeeff,.24).fillCircle(sx,sy,9);
+  this.sensorGraphics.fillStyle(0x89ecff,1).fillCircle(sx+2*Math.cos(ang),sy+2*Math.sin(ang),3);''',
+      'sensor emitter glow')
+    html=one(html,'if(drawDecor){this._decorMs%=32;this.blocksGraphics.clear();}',
+      'if(drawDecor){this._decorMs%=32;this.blocksGraphics.clear();this.platformGlow.clear();}',
+      'platform glow clear')
+    html=one(html,
+      "const alpha=p.type==='solid'?.52:p.active?1:lit?.82:.19;",
+      '''const alpha=p.type==='solid'?.58:p.active?1:lit?.90:.12;
+  // Warm/cold emissive halos reveal active edges without illuminating hidden bridges.
+  const energy=p.active?(p.type==='solid'?.27:.86):lit?Math.max(.20,p.progress*.66):p.progress*.14;
+  if(energy>.09){
+   const e=energy*(.90+.10*Math.sin(time*.006+p.a*.07));
+   const w=p.b-p.a;
+   this.platformGlow.fillStyle(color,.036*e).fillRoundedRect(p.a-10,p.y-11,w+20,43,11);
+   this.platformGlow.fillStyle(color,.070*e).fillRoundedRect(p.a-5,p.y-6,w+10,32,7);
+   this.platformGlow.lineStyle(5,color,.22*e).lineBetween(p.a+3,p.y+3,p.b-3,p.y+3);
+   this.platformGlow.lineStyle(2,0xffffff,.29*e).lineBetween(p.a+4,p.y+3,p.b-4,p.y+3);
+  }''',
+      'platform energy glow')
+    html=one(html,'this.blocksGraphics.fillStyle(color,.12*alpha).fillRect(p.a,p.y+1,p.b-p.a,23);',
+      'this.blocksGraphics.fillStyle(color,.17*alpha).fillRect(p.a,p.y+1,p.b-p.a,23);',
+      'platform emissive interior')
+    html=one(html,'if(drawDecor)this.orbs.clear();',
+      'if(drawDecor){this.orbs.clear();this.orbGlow.clear();}',
+      'spark glow clear')
+    html=one(html,'const pulse=.86+.14*Math.sin(time*.005+c.index*1.7),shine=(sparkLit?1.22:1)*pulse;',
+      '''const pulse=.84+.16*Math.sin(time*.005+c.index*1.7),shine=(sparkLit?1.30:1.08)*pulse;
+  // Layered alpha circles approximate a blooming self-lit collectible.
+  this.orbGlow.fillStyle(0x2dbbff,.045*shine).fillCircle(c.x,cy,32);
+  this.orbGlow.fillStyle(0x43dfff,.105*shine).fillCircle(c.x,cy,23);
+  this.orbGlow.fillStyle(0x9dfaff,.21*shine).fillCircle(c.x,cy,13);''',
+      'spark bloom')
+    html=one(html,'this.orbs.fillStyle(0xcaffff,.65*shine).fillCircle(c.x,cy,7);',
+      'this.orbs.fillStyle(0xcaffff,.78*shine).fillCircle(c.x,cy,7);',
+      'spark luminous core')
+    html=one(html,'платформера v0.10','платформера v0.11','document version')
+    return html
+
+
 if __name__ == '__main__':
     src = Path(sys.argv[1]); dst=Path(sys.argv[2]) if len(sys.argv)>2 else src
     output=patch(src.read_text('utf-8'))
-    for upgrade in (upgrade_v04,upgrade_v05,upgrade_v06,upgrade_v07,upgrade_v08,upgrade_v09,upgrade_v10):
+    for upgrade in (upgrade_v04,upgrade_v05,upgrade_v06,upgrade_v07,upgrade_v08,upgrade_v09,upgrade_v10,upgrade_v11):
         output=upgrade(output)
     output=optimize_assets(output)
     dst.write_text(output,'utf-8')
