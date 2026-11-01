@@ -758,10 +758,162 @@ function fillBeamMask(graphics,ox,oy,points){''','charge-rate function')
     return html
 
 
+HELPERS=r'''// Scene depth: static lamp falloff and pseudo-3D prism surfaces.
+const SCENE_LAMPS=[
+ {x:98,y:184,tint:0x27bbfa,radius:135,power:.85},
+ {x:570,y:202,tint:0x32cbef,radius:152,power:.80},
+ {x:872,y:215,tint:0xf551b8,radius:120,power:.72},
+ {x:350,y:392,tint:0x36dfff,radius:112,power:.68},
+ {x:776,y:380,tint:0x2bb6ff,radius:115,power:.67}
+];
+function staticLightStrength(x,y,lamps=SCENE_LAMPS){
+ let power=0;
+ for(const lamp of lamps){
+  const d=Math.hypot(x-lamp.x,y-lamp.y)/lamp.radius;
+  if(d<1)power=Math.max(power,lamp.power*(1-d)*(1-d));
+ }
+ return Math.min(1,power);
+}
+function platformPrismPoints(a,b,y){
+ const edge=Math.min(8,(b-a)*.07),depth=24;
+ return {
+  top:[{x:a,y:y},{x:b,y:y},{x:b-edge,y:y+8},{x:a+edge,y:y+8}],
+  front:[{x:a+edge,y:y+8},{x:b-edge,y:y+8},{x:b-edge,y:y+depth},{x:a+edge,y:y+depth}],
+  left:[{x:a,y:y},{x:a+edge,y:y+8},{x:a+edge,y:y+depth},{x:a,y:y+depth-8}],
+  right:[{x:b,y:y},{x:b-edge,y:y+8},{x:b-edge,y:y+depth},{x:b,y:y+depth-8}]
+ };
+}
+// Build one small radial sprite, reused by all stationary lights.
+function makeVisualTexture(scene,key,width,height,kind){
+ if(scene.textures.exists(key))return;
+ const cv=document.createElement('canvas');cv.width=width;cv.height=height;
+ const cx=cv.getContext('2d');
+ if(kind==='vignette'){
+  const g=cx.createRadialGradient(width*.5,height*.45,width*.19,width*.5,height*.48,width*.73);
+  g.addColorStop(0,'rgba(0,1,6,0)');g.addColorStop(.55,'rgba(0,2,9,.10)');
+  g.addColorStop(.81,'rgba(0,2,10,.44)');g.addColorStop(1,'rgba(0,1,6,.83)');
+  cx.fillStyle=g;cx.fillRect(0,0,width,height);
+ }else{
+  const g=cx.createRadialGradient(width/2,height/2,0,width/2,height/2,width/2);
+  g.addColorStop(0,'rgba(255,255,255,.72)');g.addColorStop(.14,'rgba(255,255,255,.38)');
+  g.addColorStop(.44,'rgba(255,255,255,.12)');g.addColorStop(1,'rgba(255,255,255,0)');
+  cx.fillStyle=g;cx.fillRect(0,0,width,height);
+ }
+ scene.textures.addCanvas(key,cv);
+}
+'''
+
+CREATION=r'''// Three planes: the approved painting remains the far field, architecture is the
+// mid-distance, while near silhouettes partially occlude the game plane.
+this.midArchitecture=this.add.graphics().setDepth(8);
+this.midArchitecture.lineStyle(9,0x041020,.68);
+this.midArchitecture.lineBetween(0,337,410,337);
+this.midArchitecture.lineBetween(480,335,960,335);
+this.midArchitecture.lineStyle(3,0x2a6b89,.28);
+this.midArchitecture.lineBetween(20,329,388,329);
+this.midArchitecture.lineBetween(496,328,953,328);
+for(const bx of [72,193,503,688,887]){
+ this.midArchitecture.lineStyle(6,0x071625,.8).lineBetween(bx,304,bx+16,335);
+ this.midArchitecture.lineStyle(2,0x32768a,.20).lineBetween(bx+2,304,bx+17,335);
+}
+this.midArchitecture.fillStyle(0x071425,.42).fillRect(259,346,290,10);
+this.midArchitecture.lineStyle(2,0x3086a1,.2).lineBetween(265,346,540,346);
+this.foregroundSilhouette=this.add.graphics().setDepth(53);
+this.foregroundSilhouette.fillStyle(0x01050d,.92);
+this.foregroundSilhouette.fillRoundedRect(-40,-17,300,40,12);
+this.foregroundSilhouette.fillRoundedRect(746,-22,260,44,12);
+this.foregroundSilhouette.lineStyle(17,0x020712,.88);
+this.foregroundSilhouette.beginPath();this.foregroundSilhouette.moveTo(120,-9);this.foregroundSilhouette.lineTo(142,56);this.foregroundSilhouette.lineTo(203,89);this.foregroundSilhouette.strokePath();
+this.foregroundSilhouette.lineStyle(7,0x172f3a,.42).lineBetween(114,0,146,52);
+this.foregroundSilhouette.fillStyle(0x020710,.97);
+this.foregroundSilhouette.fillRect(-17,522,280,30);
+this.foregroundSilhouette.fillRoundedRect(766,515,280,45,15);
+this.foregroundSilhouette.lineStyle(21,0x020813,.92).lineBetween(-7,507,135,505);
+this.foregroundSilhouette.lineStyle(12,0x020813,.95).lineBetween(864,496,978,489);
+// Pre-rendered gradient lights: no blur filters or per-frame canvas work.
+makeVisualTexture(this,'scene_v12_lamp',128,128,'glow');
+makeVisualTexture(this,'scene_v12_vignette',512,288,'vignette');
+this.staticLights=SCENE_LAMPS;
+this.staticLampGlow=[];
+for(const [i,lamp] of this.staticLights.entries()){
+ const glow=this.add.image(lamp.x,lamp.y,'scene_v12_lamp')
+  .setDisplaySize(lamp.radius*2,lamp.radius*2).setTint(lamp.tint)
+  .setAlpha(lamp.power*.38).setBlendMode(Phaser.BlendModes.ADD).setDepth(7.2);
+ const core=this.add.image(lamp.x,lamp.y,'scene_v12_lamp')
+  .setDisplaySize(36,36).setTint(lamp.tint).setAlpha(.55)
+  .setBlendMode(Phaser.BlendModes.ADD).setDepth(11.2);
+ this.staticLampGlow.push({glow,core,index:i,power:lamp.power});
+}
+// Dark silhouettes behind platforms create a visible stationary shadow layer.
+this.staticShadowLayer=this.add.graphics().setDepth(11.1);
+this.staticShadowLayer.fillStyle(0x010610,.39);
+for(const p of this.blocks){
+ const lamp=this.staticLights.reduce((a,b)=>Math.hypot((p.a+p.b)/2-b.x,p.y-b.y)<Math.hypot((p.a+p.b)/2-a.x,p.y-a.y)?b:a);
+ if(!p.active||Math.hypot((p.a+p.b)/2-lamp.x,p.y-lamp.y)>lamp.radius)continue;
+ const dx=((p.a+p.b)/2-lamp.x)*.22;
+ this.staticShadowLayer.fillPoints([
+  {x:p.a+3,y:p.y+22},{x:p.b-3,y:p.y+22},
+  {x:p.b-3+dx,y:p.y+40},{x:p.a+3+dx,y:p.y+40}
+ ],true);
+}
+this.sceneVignette=this.add.image(W/2,H/2,'scene_v12_vignette').setDisplaySize(W,H).setDepth(60);
+'''
+
+UPDATE_METHOD=r'''updateVisualDepth(time,playerX){
+ // Motion is subtle because this demo has a single fixed camera.
+ const drift=(playerX-W*.5)/W;
+ const far=drift*5+Math.sin(time*.00016)*1.5;
+ this.farImage.x=W*.5-far;
+ this.revealBackground.x=W*.5-far;
+ this.revealMid.x=W*.5-far;
+ this.revealFocus.x=W*.5-far;
+ this.midArchitecture.x=-drift*11;
+ this.foregroundSilhouette.x=-drift*23;
+ for(const light of this.staticLampGlow){
+  const flicker=.96+.04*Math.sin(time*.0023+light.index*2.5);
+  light.glow.setAlpha(light.power*.38*flicker);
+  light.core.setAlpha(.55*flicker);
+ }
+}
+'''
+
+def once(s,old,new,label):
+ n=s.count(old)
+ if n!=1: raise AssertionError(f'{label}: expected one target, got {n}')
+ return s.replace(old,new,1)
+
+def upgrade_v12(html):
+ html=once(html,'class Demo extends Phaser.Scene{',HELPERS+'\nclass Demo extends Phaser.Scene{','helpers')
+ html=once(html,"create(){document.getElementById('status').style.display='none';this.add.image(W/2,H/2,'screen').setDisplaySize(W,H).setDepth(0);",
+ "create(){document.getElementById('status').style.display='none';this.farImage=this.add.image(W/2,H/2,'screen').setDisplaySize(W+20,H+10).setDepth(0);",
+ 'far background scene')
+ for x in ['revealBackground','revealMid','revealFocus']:
+  html=once(html,f"this.{x}=this.add.image(W/2,H/2,'screen').setDisplaySize(W,H)",f"this.{x}=this.add.image(W/2,H/2,'screen').setDisplaySize(W+20,H+10)",f'{x} resize')
+ html=once(html,'this.orbs=this.add.graphics().setDepth(18);', 'this.orbs=this.add.graphics().setDepth(18);\n'+CREATION,'create visual planes')
+ html=once(html,'setState(state){if(this.state===state)return;',UPDATE_METHOD+'setState(state){if(this.state===state)return;','visual update method')
+ html=once(html,'const footY=this.actor.y+20;this.visual.setPosition(this.actor.x,footY+1);',
+ 'const footY=this.actor.y+20;this.visual.setPosition(this.actor.x,footY+1);\n this.updateVisualDepth(time,this.actor.x);','parallax update')
+ html=once(html,'  // Every platform has the same internal status rail. Only its fill logic changes.\n  this.blocksGraphics.fillStyle(color,.17*alpha).fillRect(p.a,p.y+1,p.b-p.a,23);\n  this.blocksGraphics.lineStyle(2,color,.70*alpha).strokeRect(p.a+2,p.y+2,p.b-p.a-4,20);',
+ '''  // Pseudo-3D surface: top, front, two dark end caps, and retained status rail.
+  const prism=platformPrismPoints(p.a,p.b,p.y);
+  const staticStrength=staticLightStrength((p.a+p.b)*.5,p.y);
+  const topLight=Math.min(1,alpha*(.58+.50*staticStrength));
+  this.blocksGraphics.fillStyle(0x020a15,.92).fillPoints(prism.left,true);
+  this.blocksGraphics.fillStyle(0x061a2a,.91).fillPoints(prism.right,true);
+  this.blocksGraphics.fillStyle(0x071522,.93).fillPoints(prism.front,true);
+  this.blocksGraphics.fillStyle(color,.12*topLight).fillPoints(prism.top,true);
+  this.blocksGraphics.lineStyle(2,color,.48*alpha+.16*staticStrength).strokePoints(prism.top,true);
+  this.blocksGraphics.lineStyle(1,0xb3edff,.11+.36*staticStrength*alpha)
+    .lineBetween(p.a+3,p.y+1,p.b-3,p.y+1);''',
+ 'replace flat rectangles')
+ html=once(html,'платформера v0.11','платформера v0.12','document label')
+ return html
+
+
 if __name__ == '__main__':
     src = Path(sys.argv[1]); dst=Path(sys.argv[2]) if len(sys.argv)>2 else src
     output=patch(src.read_text('utf-8'))
-    for upgrade in (upgrade_v04,upgrade_v05,upgrade_v06,upgrade_v07,upgrade_v08,upgrade_v09,upgrade_v10,upgrade_v11):
+    for upgrade in (upgrade_v04,upgrade_v05,upgrade_v06,upgrade_v07,upgrade_v08,upgrade_v09,upgrade_v10,upgrade_v11,upgrade_v12):
         output=upgrade(output)
     output=optimize_assets(output)
     dst.write_text(output,'utf-8')
