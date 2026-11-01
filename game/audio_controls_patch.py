@@ -337,8 +337,86 @@ else {
     return s
 
 
+def upgrade_v08(s):
+    # Pure layout adjustment. Preserve pointer geometry and all jump/beam logic.
+    s=one(s,
+      'width:min(26vw,125px,26vh);height:min(26vw,125px,26vh);aspect-ratio:1;',
+      'width:min(31vw,150px,32vh);height:min(31vw,150px,32vh);aspect-ratio:1;',
+      'left movement pad: enlarge without ellipse')
+    s=one(s,'#move{left:2.4%;bottom:5%}', '#move{left:5.2%;bottom:5%}', 'shift left movement pad right')
+    # Sprites were 512 px/frame, but on screen they are around 67 logical pixels.
+    # Keep the existing sprite position/physical collider exactly unchanged.
+    for key in ('idle','run','jump'):
+        s=one(s,
+          f"this.load.spritesheet('kiira_{key}',ASSETS.{key},{{frameWidth:512,frameHeight:512}})",
+          f"this.load.spritesheet('kiira_{key}',ASSETS.{key},{{frameWidth:256,frameHeight:256}})",
+          f'{key} frame cell')
+    s=one(s,'.setOrigin(.5,1).setScale(.131).setDepth(40)',
+      '.setOrigin(.5,1).setScale(.262).setDepth(40)','preserve sprite display size')
+    # Drawing the same triangles/lines every frame at rest sends redundant graphics to WebGL.
+    s=one(s,
+      'this.lightGraphics.clear();this.lightGraphics.fillStyle(0x45caff,.09);',
+      'if(this._beamX!==ox||this._beamY!==oy||this._beamAng!==ang){\n this._beamX=ox;this._beamY=oy;this._beamAng=ang;\n this.lightGraphics.clear();this.lightGraphics.fillStyle(0x45caff,.09);',
+      'cache static flashlight start')
+    s=one(s,
+      'this.sensorGraphics.fillStyle(0x89ecff,1).fillCircle(sx+2*Math.cos(ang),sy+2*Math.sin(ang),3);',
+      'this.sensorGraphics.fillStyle(0x89ecff,1).fillCircle(sx+2*Math.cos(ang),sy+2*Math.sin(ang),3);\n }',
+      'cache static flashlight end')
+    # Measure engine/preload/scene startup phases as one-time diagnostics.
+    s=one(s,'function initGame(){',
+      'const bootTelemetry={start:performance.now(),load:0,ready:0,first:0};\nfunction initGame(){',
+      'boot marker')
+    s=one(s,"preload(){this.load.image('screen',ASSETS.bg);",
+      "preload(){this.load.once('complete',()=>{bootTelemetry.load=performance.now();});this.load.image('screen',ASSETS.bg);",
+      'loader marker')
+    s=one(s,'resetFn=this.respawnToStart;',
+      'resetFn=this.respawnToStart;bootTelemetry.ready=performance.now();',
+      'creation marker')
+    s=one(s,"<div id=\"perfInfo\" style=\"font:11px Arial;color:#bce9fd;margin:6px 0\">",
+      "<div id=\"startupInfo\" style=\"font:11px Arial;color:#bce9fd;margin:6px 0\">Загрузка: замер...</div><div id=\"perfInfo\" style=\"font:11px Arial;color:#bce9fd;margin:6px 0\">",
+      'startup diagnostics label')
+    s=one(s,
+      'const now=performance.now(),actual=pf.last?now-pf.last:0;pf.last=now;',
+      "const now=performance.now(),actual=pf.last?now-pf.last:0;pf.last=now;\n if(!bootTelemetry.first){bootTelemetry.first=now;const el=document.getElementById('startupInfo');if(el)el.textContent='Загрузка: '+((bootTelemetry.first-bootTelemetry.start)/1000).toFixed(1)+' с · ресурсы: '+((bootTelemetry.load-bootTelemetry.start)/1000).toFixed(1)+' с · сцена: '+((bootTelemetry.ready-bootTelemetry.load)/1000).toFixed(1)+' с';}",
+      'startup diagnostics on first frame')
+    s=s.replace('платформера v0.7','платформера v0.8')
+    return s
+
+
+def optimize_assets(html):
+    """Offline build-time compression; keeps source parts and runtime Phaser APIs intact."""
+    import base64
+    import io
+    from PIL import Image
+    sizes={'bg':(960,540),'idle':(768,256),'run':(1024,512),'jump':(1024,256)}
+    counts={key:0 for key in sizes}
+    before=after=0
+    def replace(match):
+        nonlocal before,after
+        key=match.group(1)
+        if key not in sizes: return match.group(0)
+        counts[key]+=1
+        raw=base64.b64decode(match.group(2),validate=True)
+        with Image.open(io.BytesIO(raw)) as im:
+            target=sizes[key]
+            if key!='bg' and (im.width//target[0],im.height//target[1])!=(2,2):
+                raise RuntimeError(f'unexpected {key} frame sheet: {im.size}')
+            if key=='bg' and im.size!=(1672,941):
+                raise RuntimeError(f'unexpected background: {im.size}')
+            out=im.resize(target, Image.Resampling.LANCZOS)
+            output=io.BytesIO()
+            out.save(output,format='PNG',optimize=True)
+            blob=output.getvalue()
+        before+=len(raw);after+=len(blob)
+        return '"'+key+'":"data:image/png;base64,'+base64.b64encode(blob).decode('ascii')+'"'
+    html=re.sub(r'"(bg|idle|run|jump)":"data:image/png;base64,([A-Za-z0-9+/=]+)"',replace,html)
+    if any(c!=1 for c in counts.values()):
+        raise RuntimeError(f'Expected exactly four textures: {counts}')
+    print(f'Textures: {before:,} -> {after:,} bytes; GPU memory 21 -> 5.75 MiB')
+    return html
+
 if __name__ == '__main__':
     src = Path(sys.argv[1]); dst=Path(sys.argv[2]) if len(sys.argv)>2 else src
-    output=upgrade_v07(upgrade_v06(upgrade_v05(upgrade_v04(patch(src.read_text('utf-8'))))))
+    output=optimize_assets(upgrade_v08(upgrade_v07(upgrade_v06(upgrade_v05(upgrade_v04(patch(src.read_text('utf-8')))))))
     dst.write_text(output,'utf-8')
     print(f'Patched {dst} ({len(output)} chars)')
