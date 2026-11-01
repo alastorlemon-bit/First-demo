@@ -254,8 +254,59 @@ def upgrade_v05(s):
     s=one(s,'платформера v0.4','платформера v0.5','document version title')
     return s
 
+def upgrade_v06(s):
+    # One right joystick: press its central jump zone, drag anywhere to aim.
+    s=one(s,
+      '#jump:active{background:#d839ab}',
+      '#scanRing.jump-held #jump{background:#d839ab}',
+      'visual jump press state')
+    s=one(s,
+      'pointer-events:auto;touch-action:none}#scanRing.jump-held #jump',
+      'pointer-events:none;touch-action:none;display:grid;place-items:center}#scanRing.jump-held #jump',
+      'non-intercepting jump zone')
+    s=one(s,
+      '<span class="ring-label">СЕНСОР</span><button id="jump" type="button">ПРЫЖОК</button>',
+      '<span class="ring-label">СЕНСОР</span><div id="jump" aria-hidden="true">ПРЫЖОК</div>',
+      'jump decorative div')
+    s=one(s,
+      '''scanRing.addEventListener('pointerdown',e=>{
+ if(e.target.id==='jump')return;
+ e.preventDefault();scanPointer=e.pointerId;
+ scanRing.setPointerCapture(e.pointerId);aimFromRing(e);
+});''',
+      '''scanRing.addEventListener('pointerdown',e=>{
+ if(scanPointer!==null)return;
+ e.preventDefault();
+ scanPointer=e.pointerId;
+ const box=document.getElementById('jump').getBoundingClientRect();
+ const dx=e.clientX-(box.left+box.width/2),dy=e.clientY-(box.top+box.height/2);
+ const startInJump=Math.hypot(dx,dy)<=Math.min(box.width,box.height)/2;
+ if(startInJump){
+  control.jumpQueued=true; // exactly one jump request on the initial central touch
+  scanRing.classList.add('jump-held');
+ }else{
+  aimFromRing(e); // outside center only aims
+ }
+ scanRing.setPointerCapture(e.pointerId);
+});''',
+      'zone-aware pointerdown')
+    s=one(s,
+      'function endAim(e){if(e.pointerId===scanPointer)scanPointer=null}',
+      "function endAim(e){if(e.pointerId===scanPointer){scanPointer=null;scanRing.classList.remove('jump-held')}}",
+      'release jump-held state')
+    s=one(s,
+      "document.getElementById('jump').addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();control.jumpQueued=true});",
+      '// All right-side touches use the same scanRing listener; the jump icon does not steal drag events.',
+      'remove separate jump handler')
+    s=one(s,
+      'Левый стик — ход · правое кольцо — сенсор · центр — прыжок',
+      'Левый — ход · правый — свет · центр правого — прыжок + свет',
+      'control legend')
+    s=s.replace('платформера v0.5','платформера v0.6')
+    return s
+
 if __name__ == '__main__':
     src = Path(sys.argv[1]); dst=Path(sys.argv[2]) if len(sys.argv)>2 else src
-    output=upgrade_v05(upgrade_v04(patch(src.read_text('utf-8'))))
+    output=upgrade_v06(upgrade_v05(upgrade_v04(patch(src.read_text('utf-8')))))
     dst.write_text(output,'utf-8')
     print(f'Patched {dst} ({len(output)} chars)')
