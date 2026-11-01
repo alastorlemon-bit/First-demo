@@ -417,6 +417,9 @@ def optimize_assets(html):
 
 if __name__ == '__main__':
     src = Path(sys.argv[1]); dst=Path(sys.argv[2]) if len(sys.argv)>2 else src
-    output=optimize_assets(upgrade_v08(upgrade_v07(upgrade_v06(upgrade_v05(upgrade_v04(patch(src.read_text('utf-8')))))))
+    output=patch(src.read_text('utf-8'))
+    for upgrade in (upgrade_v04,upgrade_v05,upgrade_v06,upgrade_v07,upgrade_v08):
+        output=upgrade(output)
+    output=optimize_assets(output)
     dst.write_text(output,'utf-8')
     print(f'Patched {dst} ({len(output)} chars)')
