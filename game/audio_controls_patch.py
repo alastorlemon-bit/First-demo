@@ -910,10 +910,69 @@ def upgrade_v12(html):
  return html
 
 
+
+# v0.13 performance repair: static 3D platform geometry is cached between state changes.
+def upgrade_v13(html):
+ html=once(html,
+  "this.platformGlow=this.add.graphics().setDepth(12.5).setBlendMode(Phaser.BlendModes.ADD);\nthis.blocksGraphics=this.add.graphics().setDepth(13);",
+  "this.platformGlow=this.add.graphics().setDepth(12.5).setBlendMode(Phaser.BlendModes.ADD);\nthis.platformFaces=this.add.graphics().setDepth(12.85);\nthis._platformFacesStamp='';\nthis.blocksGraphics=this.add.graphics().setDepth(13);",
+  'cached platform graphics')
+ html=once(html,'function platformPrismPoints(a,b,y){',
+  '''// The platform mesh changes only when a bridge switches active state, not at 30Hz.
+function drawPlatformFaces(graphics,blocks){
+ graphics.clear();
+ for(const p of blocks){
+  if(!p.active)continue;
+  const color=p.type==='timed'?0xff63bd:p.type==='crumble'?0xffa15e:p.type==='solid'?0x87c6d9:0x51dfff;
+  const alpha=p.type==='solid'?.58:1;
+  const prism=platformPrismPoints(p.a,p.b,p.y);
+  const staticStrength=staticLightStrength((p.a+p.b)*.5,p.y);
+  const topLight=Math.min(1,alpha*(.58+.50*staticStrength));
+  graphics.fillStyle(0x020a15,.92).fillPoints(prism.left,true);
+  graphics.fillStyle(0x061a2a,.91).fillPoints(prism.right,true);
+  graphics.fillStyle(0x071522,.93).fillPoints(prism.front,true);
+  graphics.fillStyle(color,.12*topLight).fillPoints(prism.top,true);
+  graphics.lineStyle(2,color,.48*alpha+.16*staticStrength).strokePoints(prism.top,true);
+  graphics.lineStyle(1,0xb3edff,.11+.36*staticStrength*alpha)
+   .lineBetween(p.a+3,p.y+1,p.b-3,p.y+1);
+ }
+}
+function platformPrismPoints(a,b,y){''',
+  'cached platform mesh builder')
+ html=once(html,
+   '''  // Pseudo-3D surface: top, front, two dark end caps, and retained status rail.
+  const prism=platformPrismPoints(p.a,p.b,p.y);
+  const staticStrength=staticLightStrength((p.a+p.b)*.5,p.y);
+  const topLight=Math.min(1,alpha*(.58+.50*staticStrength));
+  this.blocksGraphics.fillStyle(0x020a15,.92).fillPoints(prism.left,true);
+  this.blocksGraphics.fillStyle(0x061a2a,.91).fillPoints(prism.right,true);
+  this.blocksGraphics.fillStyle(0x071522,.93).fillPoints(prism.front,true);
+  this.blocksGraphics.fillStyle(color,.12*topLight).fillPoints(prism.top,true);
+  this.blocksGraphics.lineStyle(2,color,.48*alpha+.16*staticStrength).strokePoints(prism.top,true);
+  this.blocksGraphics.lineStyle(1,0xb3edff,.11+.36*staticStrength*alpha)
+    .lineBetween(p.a+3,p.y+1,p.b-3,p.y+1);''',
+   '''  // Pseudo-3D faces are in a cached graphics layer at depth 12.85.
+  // Status rails and highlights continue to update independently at 30Hz.''',
+   'remove repeated platform polygon uploads')
+ html=once(html,
+  ' this.aimed=null;\n for(const p of this.blocks){',
+  ''' this.aimed=null;
+ // Redraw 3D platform faces only on actual bridge state changes.
+ const facesStamp=this.blocks.map(p=>p.active?'1':'0').join('');
+ if(facesStamp!==this._platformFacesStamp){
+  this._platformFacesStamp=facesStamp;
+  drawPlatformFaces(this.platformFaces,this.blocks);
+ }
+ for(const p of this.blocks){''',
+  'state-diff platform mesh redraw')
+ html=once(html,'платформера v0.12','платформера v0.13','document label')
+ return html
+
+
 if __name__ == '__main__':
     src = Path(sys.argv[1]); dst=Path(sys.argv[2]) if len(sys.argv)>2 else src
     output=patch(src.read_text('utf-8'))
-    for upgrade in (upgrade_v04,upgrade_v05,upgrade_v06,upgrade_v07,upgrade_v08,upgrade_v09,upgrade_v10,upgrade_v11,upgrade_v12):
+    for upgrade in (upgrade_v04,upgrade_v05,upgrade_v06,upgrade_v07,upgrade_v08,upgrade_v09,upgrade_v10,upgrade_v11,upgrade_v12,upgrade_v13):
         output=upgrade(output)
     output=optimize_assets(output)
     dst.write_text(output,'utf-8')
