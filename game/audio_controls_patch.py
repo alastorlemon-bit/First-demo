@@ -1019,10 +1019,109 @@ def upgrade_v14(html):
  return html
 
 
+
+# v0.15: collapse 3 full-screen geometry masks/background passes into one
+# low-resolution light/shadow texture. Preserve the 3 falloff bands, occlusion,
+# lamps, perspective planes, illuminated collectibles, 3D platforms and physics.
+import re
+
+V15_LIGHT=r'''
+// Full-scene shadow map. One texture in place of three masked copies of the background.
+function initCompositeLighting(scene){
+ const canvas=document.createElement('canvas');canvas.width=480;canvas.height=270;
+ const ctx=canvas.getContext('2d',{alpha:true});
+ const texture=scene.textures.addCanvas('scene_v15_darkness',canvas);
+ const image=scene.add.image(W/2,H/2,'scene_v15_darkness').setDisplaySize(W,H).setDepth(4);
+ return {ctx,texture,image};
+}
+function paintCompositeLighting(light,ox,oy,outer,mid,core){
+ const ctx=light.ctx;
+ ctx.setTransform(.5,0,0,.5,0,0);
+ ctx.globalCompositeOperation='source-over';
+ ctx.clearRect(0,0,W,H);
+ ctx.fillStyle='rgba(2,7,19,.74)';ctx.fillRect(0,0,W,H);
+ ctx.globalCompositeOperation='destination-out';
+ function reveal(points,amount){
+  if(!points||points.length<2)return;
+  ctx.fillStyle='rgba(0,0,0,'+amount+')';
+  ctx.beginPath();ctx.moveTo(ox,oy);
+  for(let i=0;i<points.length;i++)ctx.lineTo(points[i].x,points[i].y);
+  ctx.closePath();ctx.fill();
+ }
+ // The three original distance/angle occlusion polygons are retained.
+ reveal(outer,.44);reveal(mid,.53);reveal(core,.43);
+ ctx.globalCompositeOperation='source-over';
+ light.texture.refresh();
+}
+'''
+
+V15_RAY=r'''function rayHitRect(ox,oy,dx,dy,r,maxDist){
+ let near=0,far=maxDist;
+ if(Math.abs(dx)<1e-7){
+  if(ox<r.a||ox>r.b)return null;
+ }else{
+  let a=(r.a-ox)/dx,b=(r.b-ox)/dx;
+  if(a>b){const swap=a;a=b;b=swap;}
+  if(a>near)near=a;if(b<far)far=b;
+  if(near>far)return null;
+ }
+ if(Math.abs(dy)<1e-7){
+  if(oy<r.top||oy>r.bottom)return null;
+ }else{
+  let a=(r.top-oy)/dy,b=(r.bottom-oy)/dy;
+  if(a>b){const swap=a;a=b;b=swap;}
+  if(a>near)near=a;if(b<far)far=b;
+  if(near>far)return null;
+ }
+ const hit=near>1.5?near:far>1.5?far:null;
+ return hit!==null&&hit<maxDist?hit:null;
+}
+'''
+
+def v15_replace(s,old,new,label):
+ if s.count(old)!=1:raise AssertionError(label+': '+str(s.count(old)))
+ return s.replace(old,new,1)
+
+def v15_regex(s,pattern,new,label):
+ s,n=re.subn(pattern,lambda m:new,s,count=1,flags=re.S)
+ if n!=1:raise AssertionError(label+': '+str(n))
+ return s
+
+def upgrade_v15(html):
+ html=v15_regex(html,r'function rayHitRect\(ox,oy,dx,dy,r,maxDist\)\{.*?(?=function visibleRayLength\()',V15_RAY,'ray GC elimination')
+ html=v15_replace(html,'class Demo extends Phaser.Scene{',V15_LIGHT+'\nclass Demo extends Phaser.Scene{','single dynamic shadow layer')
+ html=v15_replace(html,'this.add.rectangle(W/2,H/2,W,H,0x020713,0.74).setDepth(4);',
+                  '// Darkness is composited into the single light/shadow texture.','remove old darkness')
+ html=v15_regex(html,r'this\.revealMaskGraphics=this\.make\.graphics\(\{x:0,y:0,add:false\}\);.*?this\.revealFocus\.setMask\(this\.focusMaskGraphics\.createGeometryMask\(\)\);',
+                'this.compositeLight=initCompositeLighting(this);','remove three masked background images')
+ html=v15_replace(html,
+  'fillBeamMask(this.revealMaskGraphics,ox,oy,outer);\n  fillBeamMask(this.midMaskGraphics,ox,oy,mid);\n  fillBeamMask(this.focusMaskGraphics,ox,oy,core);',
+  'paintCompositeLighting(this.compositeLight,ox,oy,outer,mid,core);',
+  'single lightmap refresh')
+ html=v15_replace(html,'this._lightMs>=32&&','this._lightMs>=48&&','beam update interval')
+ html=v15_replace(html,'this._lightMs%=32;','this._lightMs%=48;','beam update timer')
+ html=v15_replace(html,'beamPolygon(ox,oy,ang,rad,295,occluders,40)','beamPolygon(ox,oy,ang,rad,295,occluders,28)','outer ray count')
+ html=v15_replace(html,'beamPolygon(ox,oy,ang,rad,185,occluders,40)','beamPolygon(ox,oy,ang,rad,185,occluders,28)','mid ray count')
+ html=v15_replace(html,'beamPolygon(ox,oy,ang,.125,252,occluders,18)','beamPolygon(ox,oy,ang,.125,252,occluders,16)','focus ray count')
+ # Remove the v0.14 testing button. Full visual quality becomes the default.
+ html=v15_regex(html,
+  r'\s*// Developer diagnostic: switch individual v0\.12 layers without restarting\..*?this\._perfButton\.on\(.+?\}\);\s*this\._applyPerfMode\(\);',
+  '','remove temporary graphics test UI')
+ html=v15_regex(html,
+  r'\s*// Freeze v0\.12 visual animation when only the older baseline or isolated lamp\n // and vignette layers are enabled\. This separates render cost from CPU cost\.\n if\(!this\._perfDepth\)return;',
+  '','restore full depth animation')
+ for x in ('revealBackground','revealMid','revealFocus'):
+  html=v15_regex(html,r'\s*this\.'+x+r'\.x=W\*\.5-far;', '', 'unused '+x+' parallax')
+ for x in ('revealMaskGraphics','focusMaskGraphics','midMaskGraphics','revealBackground','revealMid','revealFocus'):
+  if x in html:raise AssertionError('stale mask reference: '+x)
+ html=v15_replace(html,'платформера v0.14','платформера v0.15','version label')
+ return html
+
+
 if __name__ == '__main__':
     src = Path(sys.argv[1]); dst=Path(sys.argv[2]) if len(sys.argv)>2 else src
     output=patch(src.read_text('utf-8'))
-    for upgrade in (upgrade_v04,upgrade_v05,upgrade_v06,upgrade_v07,upgrade_v08,upgrade_v09,upgrade_v10,upgrade_v11,upgrade_v12,upgrade_v13,upgrade_v14):
+    for upgrade in (upgrade_v04,upgrade_v05,upgrade_v06,upgrade_v07,upgrade_v08,upgrade_v09,upgrade_v10,upgrade_v11,upgrade_v12,upgrade_v13,upgrade_v14,upgrade_v15):
         output=upgrade(output)
     output=optimize_assets(output)
     dst.write_text(output,'utf-8')
