@@ -502,10 +502,183 @@ this.revealFocus.setMask(this.focusMaskGraphics.createGeometryMask());""",
     return s
 
 
+# Shared sensor raycasts, light falloff, platform state rails, and collectible beacons.
+LOGIC = r'''// Pure 2D beam geometry and shared platform meter logic.
+function rayHitRect(ox,oy,dx,dy,r,maxDist){
+ let near=0,far=maxDist;
+ for(const [pos,dir,min,max] of [[ox,dx,r.a,r.b],[oy,dy,r.top,r.bottom]]){
+  if(Math.abs(dir)<1e-7){if(pos<min||pos>max)return null;continue;}
+  let a=(min-pos)/dir,b=(max-pos)/dir;
+  if(a>b){const tmp=a;a=b;b=tmp}
+  near=Math.max(near,a);far=Math.min(far,b);
+  if(near>far)return null;
+ }
+ const hit=near>1.5?near:far>1.5?far:null;
+ return hit!==null&&hit<maxDist?hit:null;
+}
+function visibleRayLength(ox,oy,dx,dy,range,occluders,exclude){
+ let length=range;
+ for(const box of occluders){
+  if(box.owner===exclude)continue;
+  const hit=rayHitRect(ox,oy,dx,dy,box,length);
+  if(hit!==null&&hit<length)length=hit;
+ }
+ return length;
+}
+function beamCoverage(ox,oy,ang,range,spread,a,b,y,occluders=[],exclude=null){
+ const fx=Math.cos(ang),fy=Math.sin(ang),limit=Math.cos(spread),max2=range*range;
+ let hits=0;const samples=11;
+ for(let i=0;i<samples;i++){
+  const x=a+(b-a)*i/(samples-1),vx=x-ox,vy=y-oy,d2=vx*vx+vy*vy;
+  if(d2<=1||d2>max2)continue;
+  const dist=Math.sqrt(d2),dx=vx/dist,dy=vy/dist;
+  if(dx*fx+dy*fy<limit)continue;
+  if(visibleRayLength(ox,oy,dx,dy,dist,occluders,exclude)>=dist-2)hits++;
+ }
+ return hits/samples;
+}
+function platformMeter(p){
+ const safe=(n)=>Math.min(1,Math.max(0,n||0));
+ if(p.type==='solid')return 1;
+ if(p.type==='charge')return p.active?1:safe(p.progress);
+ if(p.type==='timed')return p.active?(p.beamCoverage>0?1:safe(p.remaining/3.3)):safe(p.progress);
+ if(p.type==='crumble')return p.active?safe(1-(p.breakTime||0)):safe(1-(p.remaining||0)/1.8);
+ return 0;
+}
+function beamPolygon(ox,oy,angle,spread,range,occluders,rays=32){
+ const out=[];
+ for(let i=0;i<=rays;i++){
+  const a=angle-spread+2*spread*i/rays,dx=Math.cos(a),dy=Math.sin(a);
+  const reach=visibleRayLength(ox,oy,dx,dy,range,occluders,null);
+  out.push({x:ox+reach*dx,y:oy+reach*dy});
+ }
+ return out;
+}
+'''
+
+def upgrade_v10(html):
+ # Pure geometry and platform state: one source used by local tests and Phaser.
+ start=html.index('function beamCoverage(')
+ end=html.index('class Demo extends Phaser.Scene',start)
+ html=html[:start]+LOGIC+'\n// Small geometry-mask helper: each triangle ends at the nearest light-blocking surface.\nfunction fillBeamMask(graphics,ox,oy,points){\n graphics.clear();graphics.fillStyle(0xffffff,1);\n for(let i=1;i<points.length;i++)graphics.fillTriangle(ox,oy,points[i-1].x,points[i-1].y,points[i].x,points[i].y);\n}\n'+html[end:]
+ html=one(html,
+  "this.focusMaskGraphics=this.make.graphics({x:0,y:0,add:false});\nthis.revealBackground=this.add.image(W/2,H/2,'screen').setDisplaySize(W,H).setDepth(5).setAlpha(.69);",
+  "this.focusMaskGraphics=this.make.graphics({x:0,y:0,add:false});\nthis.midMaskGraphics=this.make.graphics({x:0,y:0,add:false});\nthis.revealBackground=this.add.image(W/2,H/2,'screen').setDisplaySize(W,H).setDepth(5).setAlpha(.30);\nthis.revealMid=this.add.image(W/2,H/2,'screen').setDisplaySize(W,H).setDepth(5.5).setAlpha(.39);\nthis.revealMid.setMask(this.midMaskGraphics.createGeometryMask());",
+  'mask falloff layers')
+ html=one(html,
+  "this.revealFocus=this.add.image(W/2,H/2,'screen').setDisplaySize(W,H).setDepth(6).setAlpha(.27);",
+  "this.revealFocus=this.add.image(W/2,H/2,'screen').setDisplaySize(W,H).setDepth(6).setAlpha(.28);",
+  'focus strength')
+ html=one(html,
+  'this.camAngle=control.angle;',
+  '''// Shortest-angle interpolation makes the scanner feel mounted on a moving head.
+const difference=Math.atan2(Math.sin(control.angle-this.camAngle),Math.cos(control.angle-this.camAngle));
+this.camAngle=Math.abs(difference)<.0006?control.angle:this.camAngle+difference*(1-Math.exp(-dt*13));''',
+  'scanner angular inertia')
+
+ start=html.index(' if(this._beamX!==ox||this._beamY!==oy||this._beamAng!==ang){')
+ end=html.index(' // Animate decorative geometry',start)
+ light=''' // Active platform slabs are actual 2D light blockers. Hidden bridges do not cast shadows.
+ const occluders=[];
+ for(const p of this.blocks)if(p.active)occluders.push({a:p.a,b:p.b,top:p.y+2,bottom:p.y+22,owner:p});
+ const occStamp=this.blocks.map(p=>p.active?'1':'0').join('');
+ this._lightMs=(this._lightMs??32)+ms;
+ if(this._lightMs>=32&&(this._beamX!==ox||this._beamY!==oy||this._beamAng!==ang||this._occStamp!==occStamp)){
+  this._lightMs%=32;this._beamX=ox;this._beamY=oy;this._beamAng=ang;this._occStamp=occStamp;
+  // Three illumination bands add distance falloff without a costly shader.
+  const outer=beamPolygon(ox,oy,ang,rad,295,occluders,40);
+  const mid=beamPolygon(ox,oy,ang,rad,185,occluders,40);
+  const core=beamPolygon(ox,oy,ang,.125,252,occluders,18);
+  fillBeamMask(this.revealMaskGraphics,ox,oy,outer);
+  fillBeamMask(this.midMaskGraphics,ox,oy,mid);
+  fillBeamMask(this.focusMaskGraphics,ox,oy,core);
+  this.lightGraphics.clear();
+  this.lightGraphics.fillStyle(0x62d9ff,.028);
+  for(let i=1;i<outer.length;i++)this.lightGraphics.fillTriangle(ox,oy,outer[i-1].x,outer[i-1].y,outer[i].x,outer[i].y);
+  this.lightGraphics.lineStyle(1,0x8ceeff,.22);
+  this.lightGraphics.lineBetween(ox,oy,outer[0].x,outer[0].y);
+  this.lightGraphics.lineBetween(ox,oy,outer[outer.length-1].x,outer[outer.length-1].y);
+  this.sensorGraphics.clear();this.sensorGraphics.lineStyle(3,0x212a44,.95);
+  this.sensorGraphics.lineBetween(ox,footY-42,ox,footY-58);
+  const sx=ox,sy=footY-59;
+  this.sensorGraphics.fillStyle(0x13243d,1).fillCircle(sx,sy,5);
+  this.sensorGraphics.fillStyle(0x89ecff,1).fillCircle(sx+2*Math.cos(ang),sy+2*Math.sin(ang),3);
+ }
+'''
+ html=html[:start]+light+html[end:]
+ start=html.index(' this.aimed=null;\n for(const p of this.blocks)')
+ end=html.index(' // Декоративные собираемые искры',start)
+ platforms=''' this.aimed=null;
+ for(const p of this.blocks){
+  const coverage=beamCoverage(ox,oy,ang,295,rad,p.a,p.b,p.y+3,occluders,p);
+  const lit=coverage>0;
+  p.beamCoverage=coverage;p.revealed=lit||p.active;
+  if(p.type==='charge'||p.type==='timed'){
+   if(lit){
+    if(!p.active&&p.progress<.01)SFX.play('focus');
+    p.progress=Math.min(1,p.progress+dt*(.95+.75*Math.min(1,coverage*3)));
+    this.aimed=p;
+    if(p.progress>=1){if(!p.active)SFX.play('charged');p.active=true;if(p.type==='timed')p.remaining=3.3;}
+   }else if(!p.active)p.progress=Math.max(0,p.progress-dt*.22);
+   if(p.type==='timed'&&p.active&&!lit){p.remaining-=dt;if(p.remaining<=0){p.active=false;p.remaining=0;p.progress=0;SFX.play('expire');}}
+  }
+  if(p.type==='crumble'&&grounded&&footY>=p.y-3&&footY<=p.y+11&&ox>=p.a&&ox<=p.b){
+   p.breakTime+=dt;if(p.breakTime>1){p.active=false;p.remaining=1.8;SFX.play('crumble');}
+  }
+  if(p.type==='crumble'&&!p.active){p.remaining-=dt;if(p.remaining<=0){p.active=true;p.breakTime=0;}}
+  p.obj.body.enable=p.active;
+  if(!drawDecor)continue;
+  const color=p.type==='timed'?0xff63bd:p.type==='crumble'?0xffa15e:p.type==='solid'?0x87c6d9:0x51dfff;
+  const alpha=p.type==='solid'?.52:p.active?1:lit?.82:.19;
+  if(!p.active&&(p.type==='charge'||p.type==='timed')){
+   this.blocksGraphics.fillStyle(0x030b17,lit?.25:.85).fillRect(p.a,p.y-3,p.b-p.a,28);
+  }
+  // Every platform has the same internal status rail. Only its fill logic changes.
+  this.blocksGraphics.fillStyle(color,.12*alpha).fillRect(p.a,p.y+1,p.b-p.a,23);
+  this.blocksGraphics.lineStyle(2,color,.70*alpha).strokeRect(p.a+2,p.y+2,p.b-p.a-4,20);
+  const railX=p.a+8,railY=p.y+12,railW=Math.max(4,p.b-p.a-16),railH=6;
+  this.blocksGraphics.fillStyle(0x020b18,.85).fillRoundedRect(railX,railY,railW,railH,3);
+  this.blocksGraphics.lineStyle(1,color,.46*alpha).strokeRoundedRect(railX,railY,railW,railH,3);
+  const amount=platformMeter(p),fillW=Math.max(0,(railW-2)*amount);
+  if(fillW>.3){
+   const pulse=p.type==='solid'?.6:.77+.23*Math.sin(time*.008);
+   this.blocksGraphics.fillStyle(color,alpha*pulse).fillRect(railX+1,railY+1,fillW,railH-2);
+   if(amount<.18||p.type==='crumble'&&p.breakTime>.65){
+    this.blocksGraphics.lineStyle(2,0xffffff,.44+.3*Math.sin(time*.035)).strokeRect(p.a+2,p.y+2,p.b-p.a-4,20);
+   }
+  }
+ }
+'''
+ html=html[:start]+platforms+html[end:]
+ start=html.index(' // Декоративные собираемые искры')
+ end=html.index(' // Text rasterization',start)
+ sparks=''' // Bright pulsing collectible cells stay legible even outside the searchlight.
+ if(drawDecor)this.orbs.clear();
+ for(const c of this.collectibles){
+  if(c.got)continue;
+  const cy=c.y+Math.sin(time*.003+c.index)*4;
+  if(Math.hypot(ox-c.x,footY-25-cy)<26){c.got=true;this.items++;SFX.play('spark');continue;}
+  if(!drawDecor)continue;
+  const sparkLit=beamCoverage(ox,oy,ang,295,rad,c.x-5,c.x+5,cy,occluders)>0;
+  const pulse=.86+.14*Math.sin(time*.005+c.index*1.7),shine=(sparkLit?1.22:1)*pulse;
+  this.orbs.fillStyle(0x51e9ff,.10*shine).fillCircle(c.x,cy,20);
+  this.orbs.fillStyle(0x62dfff,.20*shine).fillCircle(c.x,cy,14);
+  this.orbs.fillStyle(0xcaffff,.65*shine).fillCircle(c.x,cy,7);
+  this.orbs.fillStyle(0xffffff,.95).fillCircle(c.x,cy,3);
+  this.orbs.lineStyle(2,0x99faff,.9*shine);
+  this.orbs.lineBetween(c.x-13,cy,c.x+13,cy);
+  this.orbs.lineBetween(c.x,cy-13,c.x,cy+13);
+ }
+'''
+ html=html[:start]+sparks+html[end:]
+ html=one(html,'платформера v0.9','платформера v0.10','document version')
+ return html
+
+
 if __name__ == '__main__':
     src = Path(sys.argv[1]); dst=Path(sys.argv[2]) if len(sys.argv)>2 else src
     output=patch(src.read_text('utf-8'))
-    for upgrade in (upgrade_v04,upgrade_v05,upgrade_v06,upgrade_v07,upgrade_v08,upgrade_v09):
+    for upgrade in (upgrade_v04,upgrade_v05,upgrade_v06,upgrade_v07,upgrade_v08,upgrade_v09,upgrade_v10):
         output=upgrade(output)
     output=optimize_assets(output)
     dst.write_text(output,'utf-8')
