@@ -415,10 +415,97 @@ def optimize_assets(html):
     print(f'Textures: {before:,} -> {after:,} bytes; GPU memory 21 -> 5.75 MiB')
     return html
 
+def upgrade_v09(s):
+    helper='''// Beam overlap accounts for a bridge's entire width, not just its midpoint.
+// Shared by visibility, charging and the sparkle highlights.
+function beamCoverage(ox,oy,angle,range,spread,a,b,y){
+ const forwardX=Math.cos(angle),forwardY=Math.sin(angle),limit=Math.cos(spread),max2=range*range;
+ let hits=0;const samples=11;
+ for(let i=0;i<samples;i++){
+  const x=a+(b-a)*i/(samples-1),vx=x-ox,vy=y-oy,d2=vx*vx+vy*vy;
+  if(d2>1&&d2<=max2&&(vx*forwardX+vy*forwardY)>=Math.sqrt(d2)*limit)hits++;
+ }
+ return hits/samples;
+}'''
+    s=one(s,'class Demo extends Phaser.Scene{',helper+'\nclass Demo extends Phaser.Scene{','beam helper')
+    s=one(s,
+       "this.add.rectangle(W/2,H/2,W,H,0x020713,0.51).setDepth(4);",
+       """this.add.rectangle(W/2,H/2,W,H,0x020713,0.51).setDepth(4);
+// Two cut-outs of the SAME approved background texture: only pixels hit by
+// the movable light return to their original brightness (no flat painted beam).
+this.revealMaskGraphics=this.make.graphics({x:0,y:0,add:false});
+this.focusMaskGraphics=this.make.graphics({x:0,y:0,add:false});
+this.revealBackground=this.add.image(W/2,H/2,'screen').setDisplaySize(W,H).setDepth(5).setAlpha(.69);
+this.revealFocus=this.add.image(W/2,H/2,'screen').setDisplaySize(W,H).setDepth(6).setAlpha(.27);
+this.revealBackground.setMask(this.revealMaskGraphics.createGeometryMask());
+this.revealFocus.setMask(this.focusMaskGraphics.createGeometryMask());""",
+       'actual reveal layers')
+    s=one(s,
+       'progress:0,remaining:0,breakTime:0,obj:g',
+       'progress:0,remaining:0,breakTime:0,revealed:false,beamCoverage:0,obj:g',
+       'bridge reveal state')
+    s=one(s,
+       "this._beamX=ox;this._beamY=oy;this._beamAng=ang;\n this.lightGraphics.clear();",
+       """this._beamX=ox;this._beamY=oy;this._beamAng=ang;
+ this.revealMaskGraphics.clear();this.revealMaskGraphics.fillStyle(0xffffff,1);
+ this.revealMaskGraphics.fillTriangle(ox,oy,ox+280*Math.cos(ang-rad),oy+280*Math.sin(ang-rad),ox+280*Math.cos(ang+rad),oy+280*Math.sin(ang+rad));
+ this.focusMaskGraphics.clear();this.focusMaskGraphics.fillStyle(0xffffff,1);
+ this.focusMaskGraphics.fillTriangle(ox,oy,ox+260*Math.cos(ang-.12),oy+260*Math.sin(ang-.12),ox+260*Math.cos(ang+.12),oy+260*Math.sin(ang+.12));
+ this.lightGraphics.clear();""",
+       'light masks update with sensor')
+    s=one(s,
+       "this.lightGraphics.clear();this.lightGraphics.fillStyle(0x45caff,.09);",
+       "this.lightGraphics.clear();this.lightGraphics.fillStyle(0x45caff,.028);",
+       'beam visual lightening')
+    s=one(s,
+       "this.lightGraphics.fillStyle(0x9cefff,.12);",
+       "this.lightGraphics.fillStyle(0x9cefff,.043);",
+       'beam core visual lightening')
+    s=one(s,
+       "let px=(p.a+p.b)/2,py=p.y+3,vx=px-ox,vy=py-oy,dist=Math.hypot(vx,vy),dot=(vx*dirx+vy*diry)/(dist||1),lit=dist<295&&dot>Math.cos(rad);",
+       """const coverage=beamCoverage(ox,oy,ang,295,rad,p.a,p.b,p.y+3);
+  const lit=coverage>0;
+  p.beamCoverage=coverage;
+  p.revealed=lit||p.active;""",
+       'bridge full-width illumination')
+    s=one(s,
+       'p.progress=Math.min(1,p.progress+dt*1.7);',
+       'p.progress=Math.min(1,p.progress+dt*(.95+.75*Math.min(1,coverage*3)));',
+       'beam strength charge')
+    s=one(s,
+       "if(drawDecor){\n  // Процедурная мягкая неоновая рамка поверх опор, без перерисовки фонового изображения.",
+       """if(drawDecor){
+  // A hidden bridge has a near-black cover over its baked backdrop; a real hit
+  // removes that cover and lights its outline while charging. Active bridges stay visible.
+  if((p.type==='charge'||p.type==='timed')&&!p.active){
+    this.blocksGraphics.fillStyle(0x020a17,lit?.16:.83).fillRect(p.a,p.y-4,p.b-p.a,29);
+  }
+  if(lit&&!p.active&&(p.type==='charge'||p.type==='timed')){
+    this.blocksGraphics.fillStyle(color,.11+.09*Math.min(1,coverage*3)).fillRect(p.a,p.y,p.b-p.a,24);
+    this.blocksGraphics.fillStyle(color,.75).fillRect(p.a+4,p.y-7,Math.max(1,(p.b-p.a-8)*p.progress),3);
+  }
+  // Процедурная мягкая неоновая рамка поверх опор, без перерисовки фонового изображения.""",
+       'bridge concealment and fill status')
+    s=one(s,
+       "let alpha=p.active?1:(p.progress>.02?p.progress*.9:.11),color=p.type==='timed'?0xff5cc8:p.type==='crumble'?0xff4665:0x55deff;",
+       "let alpha=p.active?1:(lit?.67:(p.progress>.02?.18:.07)),color=p.type==='timed'?0xff5cc8:p.type==='crumble'?0xff4665:0x55deff;",
+       'glow based on beam contact')
+    s=one(s,
+       "if(drawDecor){this.orbs.lineStyle(2,0xa5f8ff,.9);this.orbs.fillStyle(0x75ebff,.3);",
+       "if(drawDecor){const sparkLit=beamCoverage(ox,oy,ang,295,rad,c.x-6,c.x+6,cy)>0;const shine=sparkLit?1:.38;this.orbs.lineStyle(2,0xa5f8ff,.9*shine);this.orbs.fillStyle(0x75ebff,.3*shine);",
+       'orbs brighten in sensor')
+    s=one(s,
+       "'Наведи правым кольцом на пунктирные мосты'",
+       "'Освети мост · удерживай луч до зарядки'",
+       'help text')
+    s=one(s, 'платформера v0.8', 'платформера v0.9', 'version label')
+    return s
+
+
 if __name__ == '__main__':
     src = Path(sys.argv[1]); dst=Path(sys.argv[2]) if len(sys.argv)>2 else src
     output=patch(src.read_text('utf-8'))
-    for upgrade in (upgrade_v04,upgrade_v05,upgrade_v06,upgrade_v07,upgrade_v08):
+    for upgrade in (upgrade_v04,upgrade_v05,upgrade_v06,upgrade_v07,upgrade_v08,upgrade_v09):
         output=upgrade(output)
     output=optimize_assets(output)
     dst.write_text(output,'utf-8')
