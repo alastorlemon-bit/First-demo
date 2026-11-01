@@ -64,13 +64,13 @@ jobs:
       - name: Name APK
         run: |
           mkdir -p release
-          cp app/build/outputs/apk/debug/app-debug.apk release/kiira-neon-platformer-v0.12.apk
+          cp app/build/outputs/apk/debug/app-debug.apk release/kiira-neon-platformer-v0.13.apk
 
       - name: Upload APK as workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: kiira-neon-platformer-v12
-          path: release/kiira-neon-platformer-v0.12.apk
+          name: kiira-neon-platformer-v13
+          path: release/kiira-neon-platformer-v0.13.apk
           if-no-files-found: error
 
       - name: Publish downloadable preview APK
@@ -78,8 +78,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          if gh release view preview-apk-v12 >/dev/null 2>&1; then
-            gh release upload preview-apk-v12 release/kiira-neon-platformer-v0.12.apk --clobber
+          if gh release view preview-apk-v13 >/dev/null 2>&1; then
+            gh release upload preview-apk-v13 release/kiira-neon-platformer-v0.13.apk --clobber
           else
-            gh release create preview-apk-v12 release/kiira-neon-platformer-v0.12.apk --title "Kiira platformer - technical preview" --notes "One-screen Android WebView / Phaser prototype v0.12. Three scene planes, pseudo-3D platforms, local lights and vignette; physics preserved. Offline Phaser included. Debug APK." --prerelease
+            gh release create preview-apk-v13 release/kiira-neon-platformer-v0.13.apk --title "Kiira platformer - technical preview" --notes "One-screen Android WebView / Phaser prototype v0.13. Performance repair: cached pseudo-3D platform faces; three perspective planes, static lights and vignette retained; physics preserved. Offline Phaser included. Debug APK." --prerelease
           fi
