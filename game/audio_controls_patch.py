@@ -969,10 +969,60 @@ function platformPrismPoints(a,b,y){''',
  return html
 
 
+
+# v0.14 diagnostic: isolate additional graphics into touch-switchable groups.
+# This intentionally does NOT guess which layer is slow. On Android, compare
+# observed FPS in A (baseline), B (depth), C (lamps), D (vignette), E (all).
+def upgrade_v14(html):
+ html=once(html,
+  "this.sceneVignette=this.add.image(W/2,H/2,'scene_v12_vignette').setDisplaySize(W,H).setDepth(60);",
+  """this.sceneVignette=this.add.image(W/2,H/2,'scene_v12_vignette').setDisplaySize(W,H).setDepth(60);
+ // Developer diagnostic: switch individual v0.12 layers without restarting.
+ this._perfMode=0;
+ this._perfDepth=false;
+ this._perfLabels=['A БАЗА','Б ГЛУБИНА','В ЛАМПЫ','Г ВИНЬЕТКА','Д ВСЁ'];
+ this._perfButton=this.add.text(W/2,9,'',{fontFamily:'Arial',fontSize:'18px',color:'#d0f5ff',
+   backgroundColor:'#06162b',padding:{x:13,y:7},align:'center'})
+   .setOrigin(.5,0).setDepth(125).setInteractive({useHandCursor:true});
+ this._applyPerfMode=()=>{
+  const m=this._perfMode,depth=(m===1||m===4),lamps=(m===2||m===4),vignette=(m===3||m===4);
+  this._perfDepth=depth;
+  this.midArchitecture.setVisible(depth);
+  this.foregroundSilhouette.setVisible(depth);
+  this.platformFaces.setVisible(depth);
+  this.staticShadowLayer.setVisible(lamps);
+  for(const l of this.staticLampGlow){l.glow.setVisible(lamps);l.core.setVisible(lamps);}
+  this.sceneVignette.setVisible(vignette);
+  if(!depth){
+   this.farImage.x=W/2;
+   this.revealBackground.x=W/2;this.revealMid.x=W/2;this.revealFocus.x=W/2;
+   this.midArchitecture.x=0;this.foregroundSilhouette.x=0;
+  }
+  this._perfButton.setText('ГРАФИКА: '+this._perfLabels[m]+' ⟲');
+ };
+ this._perfButton.on('pointerdown',()=>{
+  this._perfMode=(this._perfMode+1)%this._perfLabels.length;
+  this._applyPerfMode();
+ });
+ this._applyPerfMode();""",
+ 'diagnostic graphics switching')
+ html=once(html,
+  '''updateVisualDepth(time,playerX){
+ // Motion is subtle because this demo has a single fixed camera.''',
+  '''updateVisualDepth(time,playerX){
+ // Freeze v0.12 visual animation when only the older baseline or isolated lamp
+ // and vignette layers are enabled. This separates render cost from CPU cost.
+ if(!this._perfDepth)return;
+ // Motion is subtle because this demo has a single fixed camera.''',
+  'disable depth work in other modes')
+ html=once(html,'платформера v0.13','платформера v0.14','document version')
+ return html
+
+
 if __name__ == '__main__':
     src = Path(sys.argv[1]); dst=Path(sys.argv[2]) if len(sys.argv)>2 else src
     output=patch(src.read_text('utf-8'))
-    for upgrade in (upgrade_v04,upgrade_v05,upgrade_v06,upgrade_v07,upgrade_v08,upgrade_v09,upgrade_v10,upgrade_v11,upgrade_v12,upgrade_v13):
+    for upgrade in (upgrade_v04,upgrade_v05,upgrade_v06,upgrade_v07,upgrade_v08,upgrade_v09,upgrade_v10,upgrade_v11,upgrade_v12,upgrade_v13,upgrade_v14):
         output=upgrade(output)
     output=optimize_assets(output)
     dst.write_text(output,'utf-8')
