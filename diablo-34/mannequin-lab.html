@@ -526,21 +526,32 @@ function previewSheet(){
    option.textContent="№ "+(i+1);select.append(option);
   });
   // Предустановка для листа 1536×1024; другие назначения можно изменить.
-  const expected={
-   torso:[255,500],rightUpperArm:[560,251],leftUpperArm:[823,255],
-   rightForearm:[550,705],leftForearm:[784,720],
-   rightThigh:[1110,260],leftThigh:[1380,260],
-   rightShin:[1055,710],leftShin:[1359,740]
+  // Атлас манекена 1024×1536: фиксированный анатомический набор.
+  // Номера берутся из девяти прозрачных компонентов, отсортированных по Y/X.
+  const mannequinMap={
+   torso:0,rightUpperArm:5,rightForearm:3,
+   leftUpperArm:2,leftForearm:1,
+   rightThigh:8,rightShin:7,leftThigh:4,leftShin:6
   };
-  const point=expected[id];
-  if(point){
-   let best=0,dMin=Infinity;
-   sheet.boxes.forEach((box,k)=>{
-    const dx=(box.x+box.w/2)-point[0],dy=(box.y+box.h/2)-point[1];
-    const d=dx*dx+dy*dy;
-    if(d<dMin){dMin=d;best=k}
-   });
-   select.value=String(best);
+  if(sheet.image.naturalWidth===1024&&sheet.image.naturalHeight===1536){
+   select.value=String(mannequinMap[id]);
+  }else{
+   const expected={
+    torso:[255,500],rightUpperArm:[560,251],leftUpperArm:[823,255],
+    rightForearm:[550,705],leftForearm:[784,720],
+    rightThigh:[1110,260],leftThigh:[1380,260],
+    rightShin:[1055,710],leftShin:[1359,740]
+   };
+   const point=expected[id];
+   if(point){
+    let best=0,dMin=Infinity;
+    sheet.boxes.forEach((box,k)=>{
+     const dx=(box.x+box.w/2)-point[0],dy=(box.y+box.h/2)-point[1];
+     const d=dx*dx+dy*dy;
+     if(d<dMin){dMin=d;best=k}
+    });
+    select.value=String(best);
+   }
   }
   select.addEventListener("change",()=>{sheet.assigned[id]=Number(select.value);setArtMessage("Проверь визуально соответствие номеров суставам.")});
   sheet.assigned[id]=Number(select.value);
@@ -577,15 +588,16 @@ $("spriteWidth").addEventListener("input",event=>{
 // Точки на самом рисунке, а не произвольные 10/88% высоты прямоугольника.
 // Пары: начало и конец кости; право/лево — по анатомии персонажа.
 const ART_ANCHORS=Object.freeze({
- torso:[[.47,.18],[.51,.83]],
- rightUpperArm:[[.79,.12],[.33,.84]],
- leftUpperArm:[[.35,.12],[.69,.84]],
- rightForearm:[[.689,.142],[.39,.64]],
- leftForearm:[[.660,.112],[.52,.62]],
- rightThigh:[[.52,.07],[.47,.83]],
- leftThigh:[[.50,.06],[.47,.83]],
- rightShin:[[.690,.096],[.597,.715]],
- leftShin:[[.50,.15],[.52,.67]]
+ // Пары шарниров по самим спрайтам: крупная точка ближе к торсу.
+ torso:[[.49,.21],[.54,.82]],
+ rightUpperArm:[[.30,.12],[.83,.89]],
+ leftUpperArm:[[.71,.12],[.22,.89]],
+ rightForearm:[[.72,.08],[.37,.63]],
+ leftForearm:[[.78,.08],[.43,.66]],
+ rightThigh:[[.29,.10],[.72,.88]],
+ leftThigh:[[.52,.10],[.44,.87]],
+ rightShin:[[.48,.06],[.50,.75]],
+ leftShin:[[.52,.07],[.49,.73]]
 });
 // Проймы торса на исходном спрайте (анатомические стороны, вид 3/4 SW).
 const TORSO_SHOULDERS=Object.freeze({
