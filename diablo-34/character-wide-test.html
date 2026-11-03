@@ -561,21 +561,53 @@ const ART_ANCHORS=Object.freeze({
  rightShin:[[.54,.06],[.49,.72]],
  leftShin:[[.50,.06],[.52,.67]]
 });
+// Графический риг: постоянный размер деталей при повороте в глубину.
+// Физика IK остаётся прежней; только экранные суставы спрайтов
+// пересчитываются двухкостным 2D IK с неизменными длинами.
+const ART_LENGTH=Object.freeze({
+ torso:BONES.headOffset*CAM.h,
+ rightUpperArm:BONES.upperArm*CAM.h,leftUpperArm:BONES.upperArm*CAM.h,
+ rightForearm:BONES.forearm*CAM.h,leftForearm:BONES.forearm*CAM.h,
+ rightThigh:BONES.thigh*CAM.h,leftThigh:BONES.thigh*CAM.h,
+ rightShin:BONES.shin*CAM.h,leftShin:BONES.shin*CAM.h
+});
+function artJoint(root,tip,reference,upper,lower){
+ const dx=tip.x-root.x,dy=tip.y-root.y;
+ const distance=Math.max(.0001,Math.hypot(dx,dy)),ux=dx/distance,uy=dy/distance;
+ // Если проекция растягивается сильнее геометрического предела,
+ // визуальная стопа/кисть остаётся на ближайшей достижимой точке.
+ const reach=Math.min(distance,upper+lower-.001);
+ const end={x:root.x+ux*reach,y:root.y+uy*reach};
+ const along=(upper*upper-lower*lower+reach*reach)/(2*reach);
+ const h=Math.sqrt(Math.max(0,upper*upper-along*along));
+ const center={x:root.x+ux*along,y:root.y+uy*along};
+ const p1={x:center.x-uy*h,y:center.y+ux*h},p2={x:center.x+uy*h,y:center.y-ux*h};
+ const near=p=>Math.hypot(p.x-reference.x,p.y-reference.y);
+ return {joint:near(p1)<=near(p2)?p1:p2,end};
+}
+function artStraight(root,elbow,hand,upper,lower){
+ const dir=(a,b,n)=>{
+  const dx=b.x-a.x,dy=b.y-a.y,m=Math.max(.0001,Math.hypot(dx,dy));
+  return {x:a.x+dx/m*n,y:a.y+dy/m*n};
+ };
+ const joint=dir(root,elbow,upper);
+ return {joint,end:dir(joint,{x:joint.x+hand.x-elbow.x,y:joint.y+hand.y-elbow.y},lower)};
+}
 function drawSpriteBetween(part,start,end){
  const index=sheet.assigned[part],box=sheet.boxes[index];
  if(!box||!sheet.image)return;
  const anchors=ART_ANCHORS[part]||[[.5,.10],[.5,.88]];
  const ax=anchors[0][0]*box.w,ay=anchors[0][1]*box.h;
  const bx=anchors[1][0]*box.w,by=anchors[1][1]*box.h;
- const srcX=bx-ax,srcY=by-ay,srcLen=Math.hypot(srcX,srcY);
- const dstX=end.x-start.x,dstY=end.y-start.y,dstLen=Math.hypot(dstX,dstY);
- if(srcLen<1||dstLen<.01)return;
+ const srcX=(bx-ax)*sheet.width,srcY=by-ay,srcLen=Math.hypot(srcX,srcY);
+ const dstX=end.x-start.x,dstY=end.y-start.y;
+ if(srcLen<1||Math.hypot(dstX,dstY)<.01)return;
  const angle=Math.atan2(dstY,dstX)-Math.atan2(srcY,srcX);
- const scale=dstLen/srcLen;
+ // Масштаб зависит только от размеров исходного ассета и длины кости.
+ const scale=ART_LENGTH[part]/srcLen;
  ctx.save();
  ctx.translate(start.x,start.y);
  ctx.rotate(angle);
- // Отдельная ширина для лабораторной подгонки, длина кости неизменна.
  ctx.transform(sheet.width*scale,0,0,scale,0,0);
  ctx.drawImage(sheet.image,box.x,box.y,box.w,box.h,-ax,-ay,box.w,box.h);
  ctx.restore();
@@ -593,8 +625,9 @@ function segment(l,z){
  ctx.globalAlpha=far?.66:1;
  if(artEnabled()){
   const side=l.id==="П"?"right":"left";
-  drawSpriteBetween(side+"Thigh",A,K);
-  drawSpriteBetween(side+"Shin",K,F);
+  const v=artJoint(A,F,K,ART_LENGTH[side+"Thigh"],ART_LENGTH[side+"Shin"]);
+  drawSpriteBetween(side+"Thigh",A,v.joint);
+  drawSpriteBetween(side+"Shin",v.joint,v.end);
  }else{
   bone(A,K,l.color,12);bone(K,F,l.color,10);
   dot(K,7,l.color);dot(A,6,l.color);
@@ -650,8 +683,10 @@ function arm(l,z){
  ctx.globalAlpha=far?.65:1;
  if(artEnabled()){
   const side=l.id==="П"?"right":"left";
-  drawSpriteBetween(side+"UpperArm",a,b);
-  drawSpriteBetween(side+"Forearm",b,d);
+  const upper=ART_LENGTH[side+"UpperArm"],lower=ART_LENGTH[side+"Forearm"];
+  const v=s.anatomy?artStraight(a,b,d,upper,lower):artJoint(a,d,b,upper,lower);
+  drawSpriteBetween(side+"UpperArm",a,v.joint);
+  drawSpriteBetween(side+"Forearm",v.joint,v.end);
  }else{
   bone(a,b,l.color,9);bone(b,d,l.color,8);dot(b,5,l.color);dot(d,5,l.color);
  }
