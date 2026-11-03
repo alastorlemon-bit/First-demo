@@ -579,11 +579,11 @@ const ART_ANCHORS=Object.freeze({
  torso:[[.47,.18],[.51,.83]],
  rightUpperArm:[[.79,.12],[.33,.84]],
  leftUpperArm:[[.35,.12],[.69,.84]],
- rightForearm:[[.55,.12],[.39,.64]],
- leftForearm:[[.52,.12],[.52,.62]],
+ rightForearm:[[.689,.142],[.39,.64]],
+ leftForearm:[[.660,.112],[.52,.62]],
  rightThigh:[[.52,.07],[.47,.83]],
  leftThigh:[[.50,.06],[.47,.83]],
- rightShin:[[.54,.15],[.49,.72]],
+ rightShin:[[.690,.096],[.597,.715]],
  leftShin:[[.50,.15],[.52,.67]]
 });
 // Графический риг: постоянный размер деталей при повороте в глубину.
@@ -660,8 +660,13 @@ function segment(l,z){
  ctx.globalAlpha=far?.66:1;
  if(artEnabled()){
   const side=l.id==="П"?"right":"left";
-  drawSpriteBetween(side+"Thigh",A,K);
-  drawSpriteBetween(side+"Shin",K,F);
+  if(l.id==="Л"){
+   drawSpriteBetween(side+"Shin",K,F);
+   drawSpriteBetween(side+"Thigh",A,K);
+  }else{
+   drawSpriteBetween(side+"Thigh",A,K);
+   drawSpriteBetween(side+"Shin",K,F);
+  }
  }else{
   bone(A,K,l.color,12);bone(K,F,l.color,10);
   dot(K,7,l.color);dot(A,6,l.color);
@@ -796,7 +801,12 @@ function paint(){
  drawGrid();groundMarks();
  const z=pelvisZ();
  const order=legs.slice().sort((a,b)=>P(hip(a,0).x,hip(a,0).y).y-P(hip(b,0).x,hip(b,0).y).y);
- segment(order[0],z);arm(order[0],z);torso(z);segment(order[1],z);arm(order[1],z);
+ segment(order[0],z);arm(order[0],z);
+ // Левая нога всегда позади корпуса: голень → бедро → торс.
+ if(order[1].id==="Л")segment(order[1],z);
+ torso(z);
+ if(order[1].id!=="Л")segment(order[1],z);
+ arm(order[1],z);
  ctx.textAlign="left";ctx.font="11px system-ui";ctx.fillStyle="#bed5e0";
  ctx.fillText("X ↘ 36/18   Y ↙ −36/18",10,H-26);
  ctx.fillText("Мир: x "+s.x.toFixed(2)+"  y "+s.y.toFixed(2)+" | "+
