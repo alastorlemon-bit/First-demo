@@ -501,10 +501,10 @@ function previewSheet(){
   });
   // Предустановка для листа 1536×1024; другие назначения можно изменить.
   const expected={
-   torso:[255,500],rightUpperArm:[823,255],leftUpperArm:[560,251],
-   rightForearm:[784,720],leftForearm:[550,705],
-   rightThigh:[1380,260],leftThigh:[1110,260],
-   rightShin:[1359,740],leftShin:[1055,710]
+   torso:[255,500],rightUpperArm:[560,251],leftUpperArm:[823,255],
+   rightForearm:[550,705],leftForearm:[784,720],
+   rightThigh:[1110,260],leftThigh:[1380,260],
+   rightShin:[1055,710],leftShin:[1359,740]
   };
   const point=expected[id];
   if(point){
@@ -548,23 +548,42 @@ $("spriteWidth").addEventListener("input",event=>{
 });
 // Исходный арт смотрит вниз: верхняя точка — проксимальный сустав.
 // Скрытые 10–12% над и под суставом остаются для перекрытия.
-function drawSpriteBetween(part,start,end,top=.10,bottom=.88){
+// Точки на самом рисунке, а не произвольные 10/88% высоты прямоугольника.
+// Пары: начало и конец кости; право/лево — по анатомии персонажа.
+const ART_ANCHORS=Object.freeze({
+ torso:[[.47,.18],[.51,.83]],
+ rightUpperArm:[[.79,.12],[.33,.90]],
+ leftUpperArm:[[.35,.12],[.69,.90]],
+ rightForearm:[[.55,.06],[.39,.64]],
+ leftForearm:[[.52,.06],[.52,.62]],
+ rightThigh:[[.52,.07],[.47,.93]],
+ leftThigh:[[.50,.06],[.47,.93]],
+ rightShin:[[.54,.06],[.49,.72]],
+ leftShin:[[.50,.06],[.52,.67]]
+});
+function drawSpriteBetween(part,start,end){
  const index=sheet.assigned[part],box=sheet.boxes[index];
  if(!box||!sheet.image)return;
- const dx=end.x-start.x,dy=end.y-start.y,length=Math.hypot(dx,dy);
- if(length<.01)return;
- const h=length/(bottom-top),w=h*box.w/box.h*sheet.width;
+ const anchors=ART_ANCHORS[part]||[[.5,.10],[.5,.88]];
+ const ax=anchors[0][0]*box.w,ay=anchors[0][1]*box.h;
+ const bx=anchors[1][0]*box.w,by=anchors[1][1]*box.h;
+ const srcX=bx-ax,srcY=by-ay,srcLen=Math.hypot(srcX,srcY);
+ const dstX=end.x-start.x,dstY=end.y-start.y,dstLen=Math.hypot(dstX,dstY);
+ if(srcLen<1||dstLen<.01)return;
+ const angle=Math.atan2(dstY,dstX)-Math.atan2(srcY,srcX);
+ const scale=dstLen/srcLen;
  ctx.save();
  ctx.translate(start.x,start.y);
- ctx.rotate(Math.atan2(dy,dx)-Math.PI/2);
- ctx.drawImage(sheet.image,box.x,box.y,box.w,box.h,-w/2,-h*top,w,h);
+ ctx.rotate(angle);
+ // Отдельная ширина для лабораторной подгонки, длина кости неизменна.
+ ctx.transform(sheet.width*scale,0,0,scale,0,0);
+ ctx.drawImage(sheet.image,box.x,box.y,box.w,box.h,-ax,-ay,box.w,box.h);
  ctx.restore();
 }
 
-
  // Лист хранится рядом с тестом; ручной импорт остаётся запасным.
  const defaultSheet=new Image();
- defaultSheet.onload=()=>{setSheetImage(defaultSheet);setArtMessage("Лист персонажа загружен автоматически: 9 деталей. Проверь их посадку в движении.")};
+ defaultSheet.onload=()=>{setSheetImage(defaultSheet);setArtMessage("Лист загружен: 9 деталей. Правые/левые части разведены, привязка по суставам рисунка.")};
  defaultSheet.onerror=()=>setArtMessage("Файл character-sheet.webp не загружен — выбери свой PNG.");
  defaultSheet.src="./character-sheet.webp";
 
@@ -684,7 +703,7 @@ function torso(z){
  const pelvis=P(waistX,s.y,z);
  const head=P(s.x+sway*.18,s.y,z+BONES.headOffset);
  if(artEnabled()){
-  drawSpriteBetween("torso",head,pelvis,.16,.86);
+  drawSpriteBetween("torso",head,pelvis);
  }else{
   ctx.fillStyle="#325b75";ctx.strokeStyle="#0d1c29";ctx.lineWidth=4;
   ctx.beginPath();ctx.moveTo(left.x,left.y);ctx.lineTo(shL.x,shL.y);
