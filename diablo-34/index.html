@@ -9,6 +9,9 @@
 body{height:100dvh;display:flex;flex-direction:column;background:#101923;color:#e9f2fa;font:14px system-ui,Arial}
 header{padding:9px 12px 5px;display:flex;justify-content:space-between;align-items:center;gap:8px}
 header b{font-size:15px}header small{font-size:11px;color:#a8bccd}
+#dimensions{position:absolute;top:40px;right:8px;max-width:40%;padding:8px;background:#112432e6;border:1px solid #3f6172;border-radius:8px;font-size:11px;line-height:1.5}
+#dimensions[hidden]{display:none}
+@media(max-width:350px){#dimensions{top:102px}}
 #stage{position:relative;flex:1;min-height:170px;overflow:hidden}
 canvas{display:block;width:100%;height:100%;touch-action:none}
 #legend{position:absolute;top:7px;left:9px;padding:5px 8px;border-radius:7px;background:#142432df;font-size:11px;line-height:1.45;pointer-events:none}
@@ -30,17 +33,18 @@ input[type=checkbox]{accent-color:#54d9ed}
 </style>
 </head>
 <body>
-<header><b>Ходьба 3/4 · полигон</b><small>v0.1 · SW ⇄ NE</small></header>
+<header><b>Ходьба 3/4 · полигон</b><small>v0.2 · анатомия</small></header>
 <div id="stage">
 <canvas id="view"></canvas>
 <div id="legend"><em>Л — левая</em> · <strong>П — правая</strong><br>зелёный + — опора тела<br>кольцо — зафиксированная стопа</div>
+<div id="dimensions" hidden><b>Длины костей</b><br>Бедро: 0.80<br>Голень: 0.80<br>Плечо: 0.60<br>Предплечье: 0.54<br>Корпус: 0.86<br>Рост: ≈7 голов</div>
 </div>
 <div id="controls">
 <div class="buttons">
 <button id="sw">↙ SW идти</button><button id="ne">↗ NE идти</button><button id="stop">■ Стоп</button>
 </div>
 <div class="buttons">
-<button id="pause">⏸ Пауза</button><button id="frame">+1 кадр</button><button id="reset">↺ Сброс</button>
+<button id="pause">⏸ Пауза</button><button id="frame">+1 кадр</button><button id="anatomy">🦴 Т-поза</button><button id="reset">↺ Сброс</button>
 </div>
 <div id="options">
 <label id="speedLabel">Скорость <output id="speedValue">1.0</output><input id="speed" type="range" min="0.6" max="1.5" step="0.1" value="1.0"></label>
@@ -52,7 +56,7 @@ input[type=checkbox]{accent-color:#54d9ed}
 <div class="meter"><span>STRETCH</span><b class="ok" id="stretch">0.0%</b></div>
 <div class="meter"><span>POP / 60 fps</span><b class="ok" id="pop">0.0 px</b></div>
 </div>
-<div id="note">SLIDE/STRETCH/POP — максимумы с момента сброса. LIMP — асимметрия последнего цикла.</div>
+<div id="note">SLIDE/STRETCH/POP — максимумы с момента сброса; STRETCH учитывает ноги и руки.</div>
 </div>
 <script>
 "use strict";
@@ -60,10 +64,11 @@ input[type=checkbox]{accent-color:#54d9ed}
 // Мировая точка опоры отдельно от тела; два ракурса, процедурный риг.
 const canvas=document.getElementById("view"),ctx=canvas.getContext("2d");
 const $=id=>document.getElementById(id);
-const TAU=Math.PI*2,STANCE=.64,UPPER=.80,LOWER=.80;
+const BONES=Object.freeze({thigh:.80,shin:.80,upperArm:.60,forearm:.54,torso:.86,headOffset:1.23});
+const TAU=Math.PI*2,STANCE=.64,UPPER=BONES.thigh,LOWER=BONES.shin;
 const CAM={ux:36,uy:18,vx:-36,vy:18,h:72};
 const legs=[{id:"Л",side:1,off:0,color:"#59d9ff"},{id:"П",side:-1,off:.5,color:"#ffad64"}];
-const s={x:0,y:0,phase:0,dir:0,face:1,turn:1,vel:0,speed:1,paused:false,slide:0,pop:0,stretch:0,limp:null};
+const s={x:0,y:0,phase:0,dir:0,face:1,turn:1,vel:0,speed:1,paused:false,anatomy:false,slide:0,pop:0,stretch:0,limp:null};
 let W=1,H=1,ox=0,oy=0,prevStamp=0,hudWait=0;
 function frac(n){return ((n%1)+1)%1}
 function clamp(n,a,b){return Math.max(a,Math.min(b,n))}
@@ -77,10 +82,12 @@ function refreshButtons(){
  $("ne").classList.toggle("active",s.dir===-1);
  $("stop").classList.toggle("active",s.dir===0);
  $("pause").textContent=s.paused?"▶ Продолжить":"⏸ Пауза";
+ $("anatomy").classList.toggle("active",s.anatomy);
+ $("dimensions").hidden=!s.anatomy;
 }
 function init(){
  s.x=s.y=s.phase=s.vel=s.slide=s.pop=s.stretch=0;
- s.dir=0;s.face=1;s.turn=1;s.paused=false;s.limp=null;s.lastDt=1/60;
+ s.dir=0;s.face=1;s.turn=1;s.paused=false;s.anatomy=false;s.limp=null;s.lastDt=1/60;
  for(const l of legs){
   l.foot={x:-l.side*.22,y:0};l.from={...l.foot};l.to={...l.foot};
   l.z=0;l.swing=false;l.last={...l.foot};l.stanceTime=0;
@@ -88,13 +95,14 @@ function init(){
  }
  refreshButtons();updateHUD();
 }
-function drive(dir){s.dir=dir;s.face=dir;s.paused=false;refreshButtons()}
-function stop(){s.dir=0;s.paused=false;refreshButtons()}
+function drive(dir){if(s.anatomy)init();s.dir=dir;s.face=dir;s.paused=false;refreshButtons()}
+function stop(){s.dir=0;s.paused=false;s.anatomy=false;refreshButtons()}
 $("sw").onclick=()=>drive(1);
 $("ne").onclick=()=>drive(-1);
 $("stop").onclick=stop;
-$("pause").onclick=()=>{s.paused=!s.paused;refreshButtons()};
-$("frame").onclick=()=>{s.paused=true;s.lastDt=1/60;simulate(1/60);refreshButtons();paint();updateHUD()};
+$("pause").onclick=()=>{if(s.anatomy){s.anatomy=false;s.paused=false}else s.paused=!s.paused;refreshButtons()};
+$("frame").onclick=()=>{s.anatomy=false;s.paused=true;s.lastDt=1/60;simulate(1/60);refreshButtons();paint();updateHUD()};
+$("anatomy").onclick=()=>{const on=!s.anatomy;init();s.anatomy=on;s.paused=on;refreshButtons();paint();updateHUD()};
 $("reset").onclick=init;
 $("speed").oninput=e=>{s.speed=+e.target.value;$("speedValue").textContent=s.speed.toFixed(1)};
 
@@ -209,17 +217,40 @@ function segment(l,z){
  ctx.fillText(l.id,F.x+9,F.y-7);
 }
 function arm(l,z){
- const wave=Math.sin(TAU*(s.phase+l.off+.5))*(Math.abs(s.vel)>.03?1:0);
- const Sh={x:s.x-s.turn*l.side*.28,y:s.y,z:z+.68};
- const E={x:Sh.x-s.turn*l.side*.05,y:s.y+wave*.19*s.face,z:z+.29};
- const Hand={x:E.x,y:E.y+wave*.12*s.face,z:z+.02};
+ const Sh={x:s.x-s.turn*l.side*.27,y:s.y,z:z+BONES.torso};
+ let E,Hand;
+ if(s.anatomy){
+  // Т-поза: обе руки симметричны и имеют постоянные длины в мире.
+  const outward=-s.turn*l.side;
+  E={x:Sh.x+outward*BONES.upperArm,y:Sh.y,z:Sh.z};
+  Hand={x:E.x+outward*BONES.forearm,y:E.y,z:E.z};
+ }else{
+  // Мах противоположен шагу одноимённой ноги.
+  const wave=Math.sin(TAU*(s.phase+l.off+.5))*(Math.abs(s.vel)>.03?1:0);
+  const upperAngle=wave*.30,foreAngle=.18+wave*.25;
+  E={x:Sh.x,y:Sh.y+s.face*Math.sin(upperAngle)*BONES.upperArm,
+    z:Sh.z-Math.cos(upperAngle)*BONES.upperArm};
+  Hand={x:E.x,y:E.y+s.face*Math.sin(foreAngle)*BONES.forearm,
+    z:E.z-Math.cos(foreAngle)*BONES.forearm};
+ }
+ // Контролируем не только ноги: обе кости руки сохраняют длину.
+ const armError=Math.max(
+  Math.abs(vdist(Sh,E)-BONES.upperArm)/BONES.upperArm,
+  Math.abs(vdist(E,Hand)-BONES.forearm)/BONES.forearm
+ );
+ s.stretch=Math.max(s.stretch,armError*100);
  const a=P(Sh.x,Sh.y,Sh.z),b=P(E.x,E.y,E.z),d=P(Hand.x,Hand.y,Hand.z);
  const far=(s.turn*l.side)>0;
  ctx.globalAlpha=far?.65:1;
- bone(a,b,l.color,9);bone(b,d,l.color,8);dot(b,5,l.color);
+ bone(a,b,l.color,9);bone(b,d,l.color,8);dot(b,5,l.color);dot(d,5,l.color);
  ctx.globalAlpha=1;
  if($("rig").checked){
-  line(a,b,"#f4fbff",1);line(b,d,"#f4fbff",1);dot(b,2,"#142331");
+  line(a,b,"#f4fbff",1);line(b,d,"#f4fbff",1);
+  dot(b,2,"#142331");
+ }
+ if(s.anatomy){
+  ctx.font="bold 11px system-ui";ctx.textAlign="center";ctx.fillStyle=l.color;
+  ctx.fillText(l.id,d.x,d.y-12);
  }
 }
 function drawGrid(){
@@ -254,18 +285,18 @@ function groundMarks(){
 }
 function torso(z){
  const left=P(s.x-s.turn*.19,s.y,z),right=P(s.x+s.turn*.19,s.y,z);
- const shL=P(s.x-s.turn*.27,s.y,z+.70),shR=P(s.x+s.turn*.27,s.y,z+.70);
+ const shL=P(s.x-s.turn*.27,s.y,z+BONES.torso),shR=P(s.x+s.turn*.27,s.y,z+BONES.torso);
  ctx.fillStyle="#325b75";ctx.strokeStyle="#0d1c29";ctx.lineWidth=4;
  ctx.beginPath();ctx.moveTo(left.x,left.y);ctx.lineTo(shL.x,shL.y);
  ctx.lineTo(shR.x,shR.y);ctx.lineTo(right.x,right.y);ctx.closePath();ctx.fill();ctx.stroke();
  const pelvis=P(s.x,s.y,z);dot(pelvis,10,"#3b7087");
- const head=P(s.x,s.y,z+1.02);
- dot(head,18,"#10212b");dot(head,15,"#e9bc93");
- dot({x:head.x-s.turn*10,y:head.y+s.turn*5},3,"#6e443d");
+ const head=P(s.x,s.y,z+BONES.headOffset);
+ dot(head,16,"#10212b");dot(head,14,"#e9bc93");
+ dot({x:head.x-s.turn*9,y:head.y+s.turn*4.5},2.5,"#6e443d");
  ctx.strokeStyle="#263a43";ctx.lineWidth=5;ctx.beginPath();
- ctx.arc(head.x,head.y,15,Math.PI*1.08,Math.PI*1.96);ctx.stroke();
+ ctx.arc(head.x,head.y,14,Math.PI*1.08,Math.PI*1.96);ctx.stroke();
  if($("rig").checked){
-  line(pelvis,P(s.x,s.y,z+.70),"#eaf7ff",1);dot(pelvis,3,"#9beac8");
+  line(pelvis,P(s.x,s.y,z+BONES.torso),"#eaf7ff",1);dot(pelvis,3,"#9beac8");
  }
 }
 function paint(){
@@ -284,7 +315,7 @@ function paint(){
  ctx.fillText("X ↘ 36/18   Y ↙ −36/18",10,H-26);
  ctx.fillText("Мир: x "+s.x.toFixed(2)+"  y "+s.y.toFixed(2)+" | "+
   (s.dir===1?"SW":s.dir===-1?"NE":"СТОП"),10,H-10);
- const la=legs.map(l=>l.id+": "+(l.swing?"перенос":"опора")).join("  •  ");
+ const la=s.anatomy?"Т-поза · симметрия":legs.map(l=>l.id+": "+(l.swing?"перенос":"опора")).join("  •  ");
  ctx.textAlign="right";ctx.fillStyle="#edf6ff";ctx.fillText(la,W-8,16);
 }
 function metric(id,value,bad){$(id).textContent=value;$(id).className=bad?"warn":"ok"}
