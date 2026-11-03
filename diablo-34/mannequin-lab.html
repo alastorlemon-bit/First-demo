@@ -631,9 +631,28 @@ const ART_ANCHORS=Object.freeze({
  rightShin:[[.52,.07],[.49,.73]],
  leftShin:[[.48,.06],[.50,.75]]
 });
+// Точные центры бирюзовых шарниров из PNG. Привязаны к номеру
+// фрагмента, поэтому при перестановке сторон pivot уезжает вместе со спрайтом.
+const ATLAS_ANCHORS=Object.freeze([
+ [[.37,.18],[.404,.915]], // №1 корпус: голова / середина таза
+ [[.782,.094],[.43,.66]], // №2 предплечье с кистью
+ [[.722,.194],[.226,.877]], // №3 плечо
+ [[.709,.09],[.37,.63]], // №4 предплечье с кистью
+ [[.669,.109],[.283,.901]], // №5 бедро
+ [[.277,.207],[.772,.879]], // №6 плечо
+ [[.661,.086],[.646,.685]], // №7 голень с стопой
+ [[.507,.082],[.620,.688]], // №8 голень с стопой
+ [[.367,.111],[.693,.9]] // №9 бедро
+]);
+function partAnchors(part){
+ if(sheet.image?.naturalWidth===1024&&sheet.image?.naturalHeight===1536)
+  return ATLAS_ANCHORS[sheet.assigned[part]]||ART_ANCHORS[part];
+ return ART_ANCHORS[part];
+}
+
 // Проймы торса на исходном спрайте (анатомические стороны, вид 3/4 SW).
 const TORSO_SHOULDERS=Object.freeze({
- right:[.145,.38],left:[.875,.42]
+ right:[.12,.383],left:[.836,.476]
 });
 // Графический риг: постоянный размер деталей при повороте в глубину.
 // Физика IK остаётся прежней; только экранные суставы спрайтов
@@ -662,7 +681,7 @@ function spriteHalfClip(x,y,ux,uy,after){
 function spriteMappedAnchor(part,start,end,mark){
  const box=sheet.boxes[sheet.assigned[part]];
  if(!box||!sheet.image)return null;
- const anchors=ART_ANCHORS[part];
+ const anchors=partAnchors(part);
  const ax=anchors[0][0]*box.w,ay=anchors[0][1]*box.h;
  const vx=(anchors[1][0]-anchors[0][0])*box.w;
  const vy=(anchors[1][1]-anchors[0][1])*box.h;
@@ -688,7 +707,7 @@ function torsoShoulderPoint(l,z){
 function drawSpriteBetween(part,start,end){
  const index=sheet.assigned[part],box=sheet.boxes[index];
  if(!box||!sheet.image)return;
- const anchors=ART_ANCHORS[part]||[[.5,.10],[.5,.88]];
+ const anchors=partAnchors(part)||[[.5,.10],[.5,.88]];
  const ax=anchors[0][0]*box.w,ay=anchors[0][1]*box.h;
  const bx=anchors[1][0]*box.w,by=anchors[1][1]*box.h;
  const vx=bx-ax,vy=by-ay,srcLen=Math.hypot(vx,vy);
