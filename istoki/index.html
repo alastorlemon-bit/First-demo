@@ -1,4 +1,4 @@
-<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5,viewport-fit=cover"><title>Дорога приключений · Истоки · α 0.3.2</title>
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5,viewport-fit=cover"><title>Дорога приключений · Истоки · α 0.3.3</title>
 <style>:root{color-scheme:dark;--ink:#ecdcb9;--muted:#a5b1c3;--gold:#d5ae6e;--outline:#a18c68;--paper:#1d2533;--accent:#f1c481}
 *{box-sizing:border-box}html,body{margin:0;height:100%;width:100%;overflow:hidden;background:#090d15;color:var(--ink);font-family:system-ui,Roboto,'Segoe UI',sans-serif}button,input{font:inherit}button{color:inherit;cursor:pointer;touch-action:manipulation}button:disabled{opacity:.38;cursor:default}img{max-width:100%}.centering{position:fixed;inset:0;display:grid;place-items:center;overflow:hidden;background:#080b11}#stage{position:relative;width:1536px;height:690px;flex:none;overflow:hidden;background:radial-gradient(ellipse at 47% 40%,#20293b 0%,#111925 71%,#12151b 100%);border:1px solid #735e43;box-shadow:0 0 0 3px #05080c,0 0 70px #000;transform-origin:center center}#stage:before{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(125deg,#ffffff05,transparent 45%,#0003)}
 #stageHeader{height:60px;display:flex;align-items:center;gap:10px;padding:6px 14px;background:linear-gradient(#2f2d33,#111a29);border-bottom:2px solid #786345;position:relative;z-index:2}.brand{font-family:Georgia,serif;font-size:22px;font-weight:700;letter-spacing:.02em;white-space:nowrap;text-shadow:0 1px 2px black}.brand small{font:11px system-ui;color:#a9b2bd;display:block;letter-spacing:.04em}.grow{flex:1}.headerTag{font-size:14px;border:1px solid #5b6a7d;padding:8px 10px;border-radius:8px;color:#d5dced}.topBtn,.ctrl{background:linear-gradient(#333b4d,#202936);border:1px solid #786a53;border-radius:8px;padding:8px 12px;font-size:15px;white-space:nowrap}.topBtn:hover,.ctrl:hover{background:#4e5265}.goldBtn{background:linear-gradient(#e7c88e,#ac8248);border:1px solid #ffdc9c;border-radius:9px;color:#1b1c20;font-weight:800;padding:9px 15px}.tinyIcon{width:23px;height:23px;object-fit:contain;vertical-align:middle;flex:none}.inlineIcon{width:1.15em;height:1.15em;object-fit:contain;vertical-align:-.23em;margin:0 .1em}.noSelect{user-select:none}.sectionTitle{font:700 15px Georgia,serif;letter-spacing:.08em;color:#e7cc9d;text-transform:uppercase}
@@ -56,7 +56,7 @@
 
 .challengeModal .travelIcon{position:absolute;right:32px;top:55px;z-index:3;background:#283b4d;border:1px solid #e3c27f;border-radius:7px;padding:5px;display:flex;align-items:center;gap:5px;color:#fbe2ae;font-size:13px}.challengeModal .travelIcon img{width:18px;height:18px}
 
-/* α 0.3.2 — card-first proportions and readable legends */
+/* α 0.3.3 — card-first proportions and readable legends */
 #stageHeader{height:55px;padding:5px 12px;gap:7px}
 #stageScreen{height:635px;padding:8px}
 .table-grid{grid-template-columns:710px 172px minmax(0,1fr);gap:8px;height:619px}
@@ -162,7 +162,7 @@
 #nativeOverlay[data-mode="class"] .classDevControls{width:100%}
 }
 
-/* α 0.3.2 — tighten villain details; caption all printed effects */
+/* α 0.3.3 — tighten villain details; caption all printed effects */
 .villainMiniInfo{justify-content:center;gap:7px;min-height:25px}
 .villainMiniInfo>div:first-child{display:none}
 .villainMiniInfo>div:nth-child(2){margin-top:0!important;font-size:12px}
@@ -180,6 +180,79 @@
 #nativeOverlay[data-mode="challenge"] .modalNative{position:relative}
 #nativeOverlay[data-mode="challenge"] .challengeModal .travelIcon{position:absolute;right:49px;top:7px;z-index:4;padding:4px 5px;font-size:11px}
 #nativeOverlay[data-mode="challenge"] .challengeModal .travelIcon img{width:15px;height:15px}
+
+/* α 0.3.3 — card-first mobile dialogs and lossless card portraits */
+#nativeOverlay{overflow:hidden!important;padding:5px!important;background:#02050beb;overscroll-behavior:none}
+#nativeOverlay .modalNative{max-height:none;overflow:visible;box-sizing:border-box;transform-origin:center center}
+#nativeOverlay[data-mode="card"] .modalNative,
+#nativeOverlay[data-mode="challenge"] .modalNative{
+ width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;min-height:0;
+ padding:0;border:0;border-radius:0;overflow:hidden;background:transparent;box-shadow:none;
+ display:grid;place-items:center;transform:none!important
+}
+.cardStage{height:100dvh;width:100vw;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;position:relative;overflow:hidden}
+.cardStageImage{display:block;min-height:0;max-width:94vw;width:auto;height:calc(100dvh - 12px);object-fit:contain;border-radius:7px;filter:drop-shadow(0 0 12px #03060d)}
+.cardStage:has(.cardStageActions) .cardStageImage{height:calc(100dvh - 59px)}
+.cardStageClose{position:absolute;right:8px;top:7px;z-index:12;height:36px;width:40px;border:1px solid #ddc493;border-radius:8px;background:#152235ed;color:#fff0d2;font-size:25px;box-shadow:0 4px 10px #000b}
+.cardStageActions{display:flex;justify-content:center;align-items:center;gap:8px;max-width:96vw;height:43px;flex-shrink:0}
+.cardStageActions button{font-size:13px;min-height:36px;line-height:1.1;padding:5px 10px;white-space:nowrap}
+.cardStageActions .goldBtn{border-radius:8px}
+.challengeStage{gap:4px;padding:4px 0}
+.challengeStage .stageToolbar{height:25px;flex-shrink:0;width:100%;display:flex;align-items:center;justify-content:flex-end;padding-right:56px}
+.challengeStage .cardStageClose{top:4px}
+.challengeStage .stageTravel{display:inline-flex;align-items:center;gap:3px;background:#27394beb;border:1px solid #dbb77c;color:#ffe3b7;padding:3px 9px;border-radius:8px;font-size:13px;height:27px}
+.challengeStage .cardStageImage{height:calc(100dvh - 114px);max-height:calc(100dvh - 114px)}
+.challengeStage .routeControl{display:grid;place-items:center;flex-shrink:0;width:min(360px,92vw);height:34px;min-height:34px;padding:4px 8px;border-radius:8px;font-size:14px;line-height:1.1}
+.challengeStage .routeDisabled{opacity:.55}
+.marketArea .marketSlot img{width:100%;height:100%;object-fit:contain!important;object-position:center;background:#121d2b}
+.marketArea .actDiscard .deckTop img{object-fit:contain!important}
+.heroCard img{object-fit:contain!important}
+.heroCard .cardType{display:none!important}
+.setupSlot .slotInfo{display:none}
+.swingViewport{height:432px}
+.swingItem{height:432px}
+.swingItem img{object-fit:contain!important;object-position:center}
+.bossChoiceCard{object-fit:contain!important}
+.setupSlot .setupSelectedIcons{margin-top:1px}
+.historyBoard{position:relative;z-index:1;margin-top:-8px;padding-top:8px;height:60px;gap:5px}
+.heroCards{position:relative;z-index:2}
+.historyColumn{gap:1px}
+.histSlice{height:17px;background:#182537;border:1px solid #b99861;border-radius:2px 2px 6px 6px}
+.histSlice img{height:100%;width:100%;display:block;object-fit:cover;object-position:center top;filter:none}
+.histSlice.histEdge-bottom img{object-position:center bottom}
+.histSlice.histEdge-top img{object-position:center top}
+.histSlice .edgeHint{display:none}
+.histSlice.emptyEdge{opacity:.25}
+.marketArea .marketSlot,.heroCard,.bossChoiceCard{box-shadow:inset 0 0 1px #d9b575}
+.symbolIcon{display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;flex:none;width:1.25em;height:1.25em}
+.symbolIcon svg{display:block;width:100%;height:100%;overflow:visible}
+.symbolIcon.tinyIcon{width:23px;height:23px}
+.symbolIcon.inlineIcon{width:1.25em;height:1.25em}
+.symbolIcon.dieIcon{width:43px;height:58px}
+.symbolIcon.deckBack{width:100%;height:100%}
+.iconSentence .symbolIcon{vertical-align:-.22em}
+.hudIcon .symbolIcon{width:22px;height:22px}
+.statCell .symbolIcon{width:21px;height:21px}
+.setupToken .symbolIcon{height:19px;width:19px}
+.setupColHeader .symbolIcon{height:24px;width:24px}
+.setupBoss .setupColHeader .symbolIcon{height:20px;width:20px}
+.setupSelectedIcons .symbolIcon{height:20px;width:20px}
+.villainMiniInfo .symbolIcon.tinyIcon{width:17px;height:17px}
+.plotPanel .symbolIcon{height:26px;width:26px}
+.turnStrip .symbolIcon{height:18px;width:18px}
+.scoreTile .symbolIcon{height:20px;width:20px}
+.rollSummary .symbolIcon{width:25px;height:25px}
+.tierLine .symbolIcon{width:18px;height:18px}
+.runeTile .symbolIcon{height:38px;width:36px}
+.darkBuy .symbolIcon.dieIcon{width:39px;height:54px}
+.pageControls{display:flex;justify-content:center;align-items:center;gap:12px;margin:9px 0 3px}
+.pageControls button{min-width:46px;padding:5px 12px;background:#37465b;border:1px solid #baa076;border-radius:7px}
+.pageControls button:disabled{opacity:.35}
+#nativeOverlay[data-mode="hand"] .rollLine,#nativeOverlay[data-mode="discard"] .rollLine{justify-content:center}
+#nativeOverlay[data-mode="log"] .modalNative{width:min(780px,95vw)}
+#nativeOverlay[data-mode="log"] .pathLine{font-size:13px;margin:4px 0;padding:6px}
+#nativeOverlay[data-mode="hand"] .modalNative,#nativeOverlay[data-mode="discard"] .modalNative{width:min(760px,94vw)}
+
 </style></head><body>
 <div class="centering"><div id="stage"><header id="stageHeader"></header><section id="stageScreen"></section></div></div>
 <div id="nativeOverlay" role="dialog" aria-modal="true" style="display:none"></div>
@@ -521,7 +594,35 @@ function setupToken(id,n){const val=Number(n)||0;return `<span class="setupToken
 
 let state=null,offers=null,picks={},villainChoice='EO-VIL-002',focusCard='',lastType='origin',modalMode='',overlayCleanup=null;
 function H(s){return String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
-function I(id,cls='inlineIcon',t=''){const k=String(id||'').toLowerCase();return ICONS[k]?`<img class="${cls}" src="${ICONS[k]}" title="${H(t||id)}" alt="${H(t||id)}">`:'';}
+function vectorGlyph(k){
+ const letters={ability_str:['С','#b66a3e'],ability_dex:['Л','#4f8f89'],ability_con:['Т','#bb5d59'],ability_int:['И','#4f96bd'],ability_wis:['М','#628f59'],ability_cha:['О','#8b6ab5'],
+ card_heritage:['Н','#476e64'],card_origin:['П','#82623f'],card_class:['К','#52698a'],card_destiny:['С','#96674c'],
+ action_hero:['Г','#507faa'],action_anti:['А','#9b4c62'],act_i:['I','#62553e'],act_ii:['II','#62553e'],act_iii:['III','#62553e'],
+ chapter_i:['I','#615d65'],chapter_ii:['II','#615d65'],chapter_iii:['III','#615d65'],chapter_iv:['IV','#615d65'],chapter_v:['V','#615d65'],chapter_vi:['VI','#615d65']};
+ if(letters[k]){const [s,c]=letters[k];return `<rect x="2" y="2" width="28" height="28" rx="6" fill="${c}" stroke="#f5e7c8" stroke-width="1.5"/><text x="16" y="22.2" text-anchor="middle" font-size="${s.length>2?12:s.length>1?15:20}" font-weight="800" fill="#fff9eb" font-family="system-ui,sans-serif">${s}</text>`;}
+ const diamond=(fill,label='')=>`<path d="M16 1 30 16 16 31 2 16Z" fill="${fill}" stroke="#f7dbb7" stroke-width="1.8"/><path d="M16 3V29M3 16H29" stroke="#fff7" stroke-width="1.4"/>${label?`<text x="16" y="22" text-anchor="middle" font-size="19" font-weight="900" fill="white">${label}</text>`:''}`;
+ if(k==='resource_xp')return diamond('#d43f37');
+ if(k==='score_triumph')return diamond('#d6e6e8','+');
+ if(k==='score_tragedy')return diamond('#343d4d','−');
+ if(k==='villain_gain_xp')return diamond('#b83d4d','+');
+ if(k==='villain_lose_xp')return diamond('#9a4a58','−');
+ if(k==='alignment_up')return '<circle cx="16" cy="16" r="7" fill="#f5d27d"/><path d="M16 1V6M16 26V31M1 16H6M26 16H31M5 5 9 9M23 23 27 27M27 5 23 9M9 23 5 27" stroke="#f5d27d" stroke-width="2.4" stroke-linecap="round"/>';
+ if(k==='alignment_down'||k==='rune_dark_crescent')return '<path d="M22 3A14 14 0 1 0 28 25 12 12 0 0 1 22 3Z" fill="#dddaf0" stroke="#9d9bb5" stroke-width="1.4"/>';
+ if(k==='villain_trigger'||k==='villain_deck_skull')return '<path d="M7 15a9 9 0 1 1 18 0l-3 7v5H10v-5Z" fill="#a84d52" stroke="#ffe2c2" stroke-width="1.5"/><circle cx="12.5" cy="16" r="2.3" fill="#141a25"/><circle cx="19.5" cy="16" r="2.3" fill="#141a25"/><path d="M14 24v3m4-3v3" stroke="#141a25" stroke-width="2"/>';
+ if(k==='rune_blank')return '<circle cx="16" cy="16" r="11" fill="none" stroke="#7f9bb3" stroke-width="2"/>';
+ if(k==='rune_notch')return '<path d="M8 25 24 7" stroke="#2d4054" stroke-width="5" stroke-linecap="round"/>';
+ if(k==='rune_dark_notch')return '<path d="M8 25 24 7" stroke="#ddd9ea" stroke-width="5" stroke-linecap="round"/>';
+ if(k==='rune_white_tri')return '<path d="M16 4 29 28H3Z" fill="#fff7df" stroke="#665a47" stroke-width="2"/>';
+ if(k==='rune_black_tri')return '<path d="M16 4 29 28H3Z" fill="#202532" stroke="#b8b4c4" stroke-width="2"/>';
+ if(k==='rune_double_tri')return '<path d="M16 2 29 15H3ZM16 30 3 17h26Z" fill="#d7d0df" stroke="#77708a" stroke-width="1.2"/>';
+ if(k==='rune_colored_2')return '<path d="M7 25 16 7M16 25 25 7" stroke="#5f9aa6" stroke-width="5" stroke-linecap="round"/>';
+ if(k==='rune_special_dots')return '<circle cx="8" cy="16" r="4" fill="#7898aa"/><circle cx="16" cy="16" r="4" fill="#d2ab72"/><circle cx="24" cy="16" r="4" fill="#a4779e"/>';
+ return null;
+}
+function I(id,cls='inlineIcon',t=''){
+ const k=String(id||'').toLowerCase(),label=H(t||id),vector=cls==='deckBack'||k.startsWith('story_')?null:vectorGlyph(k);
+ return vector?`<span class="symbolIcon ${cls}" title="${label}" role="img" aria-label="${label}"><svg viewBox="0 0 32 32" focusable="false" aria-hidden="true">${vector}</svg></span>`:ICONS[k]?`<img class="${cls}" src="${ICONS[k]}" title="${label}" alt="${label}">`:'';
+}
 function iconNum(id,n){return `<span class="hudIcon" title="${H(id)}">${I(id,'tinyIcon')}<strong>${Number(n)||0}</strong></span>`;}
 function tagged(s){return H(s).replace(/\[([A-Z_]+)(?::(-?\d+))?\]/g,(raw,key,n)=>ICONS[key.toLowerCase()]?`<span class="iconSentence">${I(key,'inlineIcon',key)}${UI_NAMES[key.toLowerCase()]?`<small class='inlineLegend'>${H(iconName(key))}</small>`:''}${n?`<b>×${H(n)}</b>`:''}</span>`:H(raw)).replace(/\n/g,'<p></p>');}
 function IMG(id){return DB.images[id]||'';}
@@ -533,8 +634,16 @@ function safe(fn,opts={}){try{let x=fn();save();render();if(opts.close)closeModa
 function save(){if(!state)return;try{localStorage.setItem(STORE,JSON.stringify(state));}catch(e){}}
 try{const s=JSON.parse(localStorage.getItem(STORE));if(s?.schema===1&&s?.players?.length===1)state=s;}catch(e){}
 function adapt(){const portrait=innerHeight>innerWidth,scale=Math.min((portrait?innerWidth:SCALE_BASE.w)/SCALE_BASE.w,1);const realScale=portrait?Math.min(innerWidth/SCALE_BASE.h,innerHeight/SCALE_BASE.w):Math.min(innerWidth/SCALE_BASE.w,innerHeight/SCALE_BASE.h);$('stage').style.transform=`rotate(${portrait?'90':'0'}deg) scale(${realScale})`;}
-window.addEventListener('resize',adapt);window.addEventListener('orientationchange',()=>setTimeout(adapt,140));
-function modal(content,mode='info'){modalMode=mode;const x=$('nativeOverlay');x.dataset.mode=mode;x.innerHTML=`<div class="modalNative">${content}</div>`;x.style.display='grid';}
+window.addEventListener('resize',()=>{adapt();requestAnimationFrame(fitModalView);});window.addEventListener('orientationchange',()=>setTimeout(adapt,140));
+function fitModalView(){
+ if(modalMode==='card'||modalMode==='challenge')return;
+ const m=$('nativeOverlay').querySelector('.modalNative');if(!m)return;
+ m.style.transform='none';
+ const r=m.getBoundingClientRect(),naturalWidth=Math.max(m.scrollWidth,r.width),naturalHeight=Math.max(m.scrollHeight,r.height);
+ const scale=Math.min(1,Math.max(.1,(innerWidth-14)/naturalWidth),Math.max(.1,(innerHeight-14)/naturalHeight));
+ m.style.transform='scale('+scale.toFixed(4)+')';
+}
+function modal(content,mode='info'){modalMode=mode;const x=$('nativeOverlay');x.dataset.mode=mode;x.innerHTML=`<div class="modalNative">${content}</div>`;x.style.display='grid';requestAnimationFrame(fitModalView);}
 function closeModal(){modalMode='';$('nativeOverlay').style.display='none';$('nativeOverlay').innerHTML='';}
 function head(title){return `<div class="modalHead"><strong>${H(title)}</strong><button data-close title="Закрыть">✕</button></div>`;}
 function startSetup(){offers=E.createOffers(DB);picks=Object.fromEntries(Object.entries(offers).map(([k,v])=>[k,v[0]]));villainChoice='EO-VIL-002';lastType='origin';focusCard=picks.origin;state=null;closeModal();render();}
@@ -548,14 +657,14 @@ function setupCol(cat){
  const canSwitch=opts.length>1;
  return `<section class="setupSlot"><div class="setupColHeader">${I('card_'+cat)} ${TYPES[cat]}</div>
  <button class="switchArrow" data-swing="${cat}:-1" ${canSwitch?'':'disabled'} title="Предыдущая карта">⌃</button>
- <div class="swingViewport" data-swipe="${cat}"><div class="swingTrack" style="transform:translateY(${index===1?'-401px':'0px'})">${cards}</div></div>
+ <div class="swingViewport" data-swipe="${cat}"><div class="swingTrack" style="transform:translateY(${index===1?'-432px':'0px'})">${cards}</div></div>
  <button class="switchArrow" data-swing="${cat}:1" ${canSwitch?'':'disabled'} title="Следующая карта">⌄</button>
  <div class="setupSelected">${H(c?.title||'')}</div><div class="setupSelectedIcons">${(c?.header||[]).slice(0,5).map(x=>setupToken(x.icon,x.quantity)).join('')}</div>
  <button class="slotInfo" data-view="${selected}">Описание и эффекты ⓘ</button></section>`;
 }
 function renderSetup(){if(!offers)offers=E.createOffers(DB);if(!Object.keys(picks).length)picks=Object.fromEntries(Object.entries(offers).map(([k,v])=>[k,v[0]]));
  const v=DB.villains[villainChoice]?.initial;
- $('stageHeader').innerHTML=`<div class="brand">ДОРОГА ПРИКЛЮЧЕНИЙ<small>ИСТОКИ · СОЗДАНИЕ ПЕРСОНАЖА · α 0.3.2</small></div><span class="grow"></span><button class="topBtn" data-fullscreen title="Полный экран">⛶</button><button class="topBtn" data-newdeal>↻ Новая раздача</button><button class="goldBtn" data-startgame>Начать партию</button>`;
+ $('stageHeader').innerHTML=`<div class="brand">ДОРОГА ПРИКЛЮЧЕНИЙ<small>ИСТОКИ · СОЗДАНИЕ ПЕРСОНАЖА · α 0.3.3</small></div><span class="grow"></span><button class="topBtn" data-fullscreen title="Полный экран">⛶</button><button class="topBtn" data-newdeal>↻ Новая раздача</button><button class="goldBtn" data-startgame>Начать партию</button>`;
  $('stageScreen').innerHTML=`<div class="setupGridV3">${['heritage','origin','class','destiny'].map(setupCol).join('')}
  <section class="setupSlot setupBoss"><div class="setupColHeader">${I('villain_trigger')} ПРОТИВНИК</div><div class="bossChoiceHead"><button class="ctrl" data-vswitch="-1">‹</button><b>${H(v?.title||'')}</b><button class="ctrl" data-vswitch="1">›</button></div>
  <img class="bossChoiceCard" data-zoom="${villainChoice}_initial" src="${IMG(villainChoice+'_initial')||''}" alt="Карта злодея">
@@ -571,10 +680,13 @@ function mainVillain(){const v=state.villain, form=DB.villains[v.cardId]?.[v.for
 
 function heroCard(cat){const id=hero().character[cat],cls=cat==='class',n=hero().classXp;
  const tiers=cls?`<span class="classTierMarks">${[2,4,6].map(x=>`<em class="${n>=x?'unlocked':''}">${x} ${n>=x?'✓':'·'}</em>`).join('')}</span>`:'';
- return `<button class="heroCard ${cls?'classCard':''}" ${cls?'data-classcard':'data-zoom="'+id+'"'} title="${H(card(id)?.title)}">${src(id)}${tiers}<span class="cardType">${H(TYPES[cat])}</span></button>`;}
-function historyColumn(act){const entries=hero().story.filter(x=>x.slotAct===act);return `<div class="historyColumn">${[0,1,2].map(i=>{const x=entries[i];return x?`<button class="histSlice" data-zoom="${x.cardId}" title="${H(card(x.cardId)?.title)}">${src(x.cardId)}<span>${H(card(x.cardId)?.title)}</span></button>`:'<div class="histSlice" title="Свободное место"></div>';}).join('')}</div>`;}
+ return `<button class="heroCard ${cls?'classCard':''}" data-zoom="${id}" title="${H(card(id)?.title)}">${src(id)}${tiers}</button>`;}
+function historyColumn(act){
+ const entries=hero().story.filter(x=>x.slotAct===act);
+ return `<div class="historyColumn">${[0,1,2].map(i=>{const x=entries[i];if(!x)return '<div class="histSlice emptyEdge" title="Свободное место"></div>';const edge=x.path==='bottom'?'bottom':'top';const what=x.path==='trait'?'Черта':edge==='bottom'?'Нижний путь':'Верхний путь';return `<button class="histSlice histEdge-${edge}" data-zoom="${x.cardId}" title="${H(card(x.cardId)?.title)} · ${what}">${src(x.cardId)}<span class="edgeHint">${what}</span></button>`;}).join('')}</div>`;
+}
 function renderGame(){const p=hero(),v=state.villain,ABT=E.abilityTotals(DB,p),SYM=E.storySymbols(DB,p),SC=E.storyScore(DB,p),mand=E.getMandatory(state),prog=p.story.length;
- $('stageHeader').innerHTML=`<div class="brand">ДОРОГА ПРИКЛЮЧЕНИЙ<small>ИСТОКИ · ОДИНОЧНАЯ ПАРТИЯ · α 0.3.2</small></div><span class="headerTag">${state.phase==='turn'?'Ход '+state.turn:state.phase==='pre_roll'?'ПОДГОТОВКА БРОСКА':state.phase==='reacting'?'РЕАКЦИИ':'ИТОГИ'}</span><span class="grow"></span><span class="statusHint" style="max-width:260px">${H(latest()).slice(0,65)}</span><button class="topBtn" data-fullscreen title="Полный экран">⛶</button><button class="topBtn" data-help>?</button><button class="topBtn" data-save>↓</button><button class="topBtn" data-new>Новая</button>`;
+ $('stageHeader').innerHTML=`<div class="brand">ДОРОГА ПРИКЛЮЧЕНИЙ<small>ИСТОКИ · ОДИНОЧНАЯ ПАРТИЯ · α 0.3.3</small></div><span class="headerTag">${state.phase==='turn'?'Ход '+state.turn:state.phase==='pre_roll'?'ПОДГОТОВКА БРОСКА':state.phase==='reacting'?'РЕАКЦИИ':'ИТОГИ'}</span><span class="grow"></span><span class="statusHint" style="max-width:260px">${H(latest()).slice(0,65)}</span><button class="topBtn" data-fullscreen title="Полный экран">⛶</button><button class="topBtn" data-help>?</button><button class="topBtn" data-save>↓</button><button class="topBtn" data-new>Новая</button>`;
  const market=`<section class="frame marketArea">${[1,2,3].map(a=>{const discard=state.discardActs?.[a]||[],top=discard.at(-1);
  return `<div class="marketRow"><div class="deckBox actDeck" title="Колода акта ${a}"><div class="deckTop">${I('act_'+(['','i','ii','iii'][a]),'deckBack')}</div><div class="deckCount">${state.deck['act_'+a].length}</div></div>${[0,1,2,3,4].map(i=>marketSlot(a,i)).join('')}<button class="deckBox actDiscard" data-discard="${a}" title="Сброс акта ${a}"><div class="deckTop">${top?src(top):'<span class="emptyDiscard">∅</span>'}</div><div class="deckCount">${discard.length}</div></button></div>`;}).join('')}</section>`;
  const track=Array.from({length:7},(_,i)=>`<span class="alignCell ${p.alignment===i?'current':''}" title="${i<=2?'Свет':i===3?'Равновесие':'Тьма'}: ${i}">${i}${p.alignment===i?'<i>▼</i>':''}</span>`).join('');
@@ -584,25 +696,35 @@ function renderGame(){const p=hero(),v=state.villain,ABT=E.abilityTotals(DB,p),S
  $('stageScreen').innerHTML=`<div class="table-grid">${market}${mainVillain()}${heroBoard}</div>`;
 }
 function render(){state?renderGame():renderSetup();adapt();}
-function openCard(id,actSlot=null){const c=card(id);if(!c)return;
+function cardStage(url,title,actions='',mode='card'){
+ return modal(`<div class="cardStage"><button class="cardStageClose" data-close title="Закрыть">✕</button><img class="cardStageImage" src="${url}" alt="${H(title)}">${actions?`<div class="cardStageActions">${actions}</div>`:''}</div>`,mode);
+}
+function openCard(id,actSlot=null){
+ const c=card(id);if(!c)return;
  if(c.kind==='challenge'){
- const active=actSlot&&state?.phase==='turn'&&!hero().turnActions&&!E.getMandatory(state);
- const top=active?`<button class="goldBtn routeControl" data-attempt="${actSlot}:top">▲ Верхний путь</button>`:'<div class="routeControl routeDisabled">▲ Верхний путь</div>';
- const bottom=active?`<button class="goldBtn routeControl" data-attempt="${actSlot}:bottom">▼ Нижний путь</button>`:'<div class="routeControl routeDisabled">▼ Нижний путь</div>';
- const travel=active&&hero().xp>0?`<button class="travelIcon" data-travel="${actSlot}" title="Странствовать: заменить карту за 1 опыт">↻ ${I('resource_xp','tinyIcon')}1</button>`:'';
- return modal(`${head(c.title)}<div class="challengeModal">${travel}${top}<img class="challengeLarge" src="${IMG(id)}" title="${H(c.title)}">${bottom}</div>`, 'challenge');
+  const active=actSlot&&state?.phase==='turn'&&!hero().turnActions&&!E.getMandatory(state);
+  const top=active?`<button class="goldBtn routeControl" data-attempt="${actSlot}:top">▲ Верхний путь</button>`:'<div class="routeControl routeDisabled">▲ Верхний путь</div>';
+  const bottom=active?`<button class="goldBtn routeControl" data-attempt="${actSlot}:bottom">▼ Нижний путь</button>`:'<div class="routeControl routeDisabled">▼ Нижний путь</div>';
+  const travel=active&&hero().xp>0?`<button class="stageTravel" data-travel="${actSlot}" title="Странствовать: заменить карту за 1 опыт">↻ ${I('resource_xp','tinyIcon')} 1</button>`:'';
+  return modal(`<div class="cardStage challengeStage"><div class="stageToolbar">${travel}<button class="cardStageClose" data-close title="Закрыть">✕</button></div>${top}<img class="cardStageImage" src="${IMG(id)}" alt="${H(c.title)}">${bottom}</div>`,'challenge');
  }
- let content=tagged(c.action?.text||c.dev?.tagged||c.trait?.tagged||c.text||''),buttons='';
- if(c.kind==='trait'){content=`<div class="iconSentence">${(c.header||[]).map(x=>iconNum(x.icon,x.quantity)).join('')}</div><p>${tagged(c.trait?.tagged||c.text)}</p>`;
-  if(actSlot&&state?.phase==='turn'&&!hero().turnActions&&!E.getMandatory(state)){buttons=`<button class="goldBtn" data-attempt="${actSlot}:trait">Взять черту</button>`;if(hero().xp>0)buttons+=`<button class="modalButton" data-travel="${actSlot}">↻ Странствовать (1 опыт)</button>`;}
+ let buttons='';
+ if(c.kind==='trait'&&actSlot&&state?.phase==='turn'&&!hero().turnActions&&!E.getMandatory(state)){
+  buttons=`<button class="goldBtn" data-attempt="${actSlot}:trait">Взять черту</button>`;
+  if(hero().xp>0)buttons+=`<button class="modalButton" data-travel="${actSlot}">↻ Странствовать (1 опыт)</button>`;
  }
  if(c.action&&state?.players[0].hand.includes(id)&&E.eligibleActions(DB,state).some(x=>x.id===id))buttons+=`<button class="goldBtn" data-play="${id}">Разыграть карту</button>`;
- if(c.category==='class'&&state&&hero().character.class===id)buttons+=`<button class="goldBtn" data-classcard>Развитие класса · ${hero().classXp} / 6</button>`;
- return modal(`${head(c.title)}<div class="cardDetail">${src(id,'class="cardFull"')}<div class="detailText"><div class="fullEffect">${content}</div><div class="detailBtns">${buttons}<button class="modalButton" data-close>Закрыть</button></div></div></div>`,'card');
+ if(c.category==='class'&&state&&hero().character.class===id)buttons+=`<button class="goldBtn" data-classcard>Развитие класса · ${hero().classXp}/6</button>`;
+ return cardStage(IMG(id),c.title,buttons,'card');
 }
-
-function openZoom(key){if(key.endsWith('_initial')||key.endsWith('_final')){const id=key.replace(/_(initial|final)$/,'');const f=key.endsWith('_initial')?'initial':'final',v=DB.villains[id]?.[f];if(!v)return;return modal(`${head(v.title)}<div class="cardDetail"><img class="cardFull" src="${IMG(key)}"><div class="detailText"><p><b>Сложность ${v.difficulty}</b></p><p>${v.runes.map(r=>H(r)).join(' · ')}</p><p>${tagged(v.special||'')}</p><p>${tagged(v.gainXp||'')}</p><p>${tagged(v.loseXp||'')}</p><div class="detailBtns"><button class="modalButton" data-vother="${id}_${f==='initial'?'final':'initial'}">Показать ${f==='initial'?'финальную':'начальную'} форму</button></div></div></div>`,'card');}
- return openCard(key);}
+function openZoom(key){
+ if(key.endsWith('_initial')||key.endsWith('_final')){
+  const id=key.replace(/_(initial|final)$/,''),f=key.endsWith('_initial')?'initial':'final',v=DB.villains[id]?.[f];if(!v)return;
+  const switchForm=`<button class="modalButton" data-vother="${id}_${f==='initial'?'final':'initial'}">Показать ${f==='initial'?'финальную':'начальную'} форму</button>`;
+  return cardStage(IMG(key),v.title,switchForm,'card');
+ }
+ return openCard(key);
+}
 function phaseModal(){const p=state?.pending;if(!p)return;
  const c=card(p.cardId),v=DB.villains[p.cardId]?.[p.path],title=p.kind==='villain'?v?.title:c?.title;
  let base=`${head(title||'Бросок рун')}<div class="rollSummary"><strong>${p.difficulty}</strong><span>Сложность</span>${(p.matching||[]).map(k=>I('ability_'+String(k).toLowerCase(),'tinyIcon')).join('')}<span class="spacer"></span>${iconNum('resource_xp',hero().xp)}</div>`;
@@ -623,7 +745,15 @@ function phaseModal(){const p=state?.pending;if(!p)return;
  const eligibleMarkup=eligible.length?`<div class="rollLine">${eligible.map(x=>`<button class="ctrl" data-view="${x.id}" style="padding:4px"><img src="${IMG(x.id)}" class="actionCardMini" title="${H(x.card.title)}"></button>`).join('')}</div>`:'<p class="smallPrint">В текущем окне подходящих карт на руке нет.</p>';
  modal(base+`<div class="rollLine">${faces}</div><div class="rollSummary"><span>Результат</span><strong>${p.rollTotal}</strong><span>Сложность ${p.difficulty}</span><span class="${p.rollTotal+p.bonus>=p.difficulty?'ok':'warn'}">${p.rollTotal+p.bonus>=p.difficulty?'Предварительно успех':'Предварительно неудача'}</span>${p.darkSymbols?iconNum('alignment_down',p.darkSymbols):''}</div>${info}<div><b>Карты на руке для вмешательства</b>${eligibleMarkup}</div><div class="rollSummary">Дополнительный модификатор: <input id="rollBonus" class="formControl" type="number" value="${p.bonus}" min="-30" max="30"><button class="modalButton" data-modifier>Применить</button></div><div class="rollButtons"><button class="goldBtn" data-finish ${p.fateful?'disabled':''}>Применить результат</button><button class="modalButton" data-close>Свернуть</button></div>`,'reacting');
 }
-function handsModal(){const p=hero();const cs=p.hand.map(id=>`<button class="modalButton" data-view="${id}"><img class="actionCardMini" src="${IMG(id)}" title="${H(card(id)?.title)}"><div>${H(card(id)?.title)}</div></button>`).join('');modal(`${head('Карты на руке')}<div class="rollLine">${cs||'Пока пусто'}</div>`,'hand');}
+function pager(page,pages,dataName,extra=''){
+ if(pages<=1)return '';
+ return `<div class="pageControls"><button data-${dataName}="${extra}${Math.max(0,page-1)}" ${page===0?'disabled':''}>‹</button><span>${page+1} / ${pages}</span><button data-${dataName}="${extra}${Math.min(pages-1,page+1)}" ${page===pages-1?'disabled':''}>›</button></div>`;
+}
+function handsModal(page=0){
+ const ids=hero().hand,total=Math.max(1,Math.ceil(ids.length/4));page=Math.max(0,Math.min(page,total-1));
+ const cs=ids.slice(page*4,(page+1)*4).map(id=>`<button class="modalButton" data-view="${id}"><img class="actionCardMini" src="${IMG(id)}" title="${H(card(id)?.title)}"><div>${H(card(id)?.title)}</div></button>`).join('');
+ modal(`${head('Карты на руке · '+ids.length)}<div class="rollLine">${cs||'Пока пусто'}</div>${pager(page,total,'handpage')}`,'hand');
+}
 function scoreModal(){const s=E.storyScore(DB,hero());modal(`${head('Промежуточные очки судьбы')}<div class="rollSummary">${iconNum('score_triumph',s.triumph)}${iconNum('score_tragedy',s.tragedy)}${iconNum('resource_xp',s.remainingXp)}<b>Знаки: ${s.symbolPts}</b><b>Пока ${s.subtotal}</b></div><div class="infoBlock">Это промежуточная оценка: ${s.notIncluded.join(', ')} ещё не включены в автоматический подсчёт.</div>`,'score');}
 function classModal(){const p=hero(),c=card(p.character.class),tiers=c?.dev?.tiers||[];
  const html=tiers.map(t=>{const x=Number(t.required_committed_xp),active=p.classXp>=x;
@@ -634,11 +764,17 @@ function classModal(){const p=hero(),c=card(p.character.class),tiers=c?.dev?.tie
 function adjustModal(){modal(`${head('Корректировка неавтоматизированного эффекта')}<p class="smallPrint">Используй для свойств карт, пока требующих ручного разрешения.</p><div class="rollSummary">${I('resource_xp')} Герой <input id="xpDelta" class="formControl" type="number" value="0"><button class="modalButton" data-adjustxp>Применить</button></div><div class="rollSummary">${I('villain_gain_xp')} Злодей <input id="vxpDelta" class="formControl" type="number" value="0"><button class="modalButton" data-adjustvillain>Применить</button></div><div class="rollSummary">${I('alignment_down')} Шкала <input id="alignmentDelta" class="formControl" type="number" value="0"><button class="modalButton" data-adjustalign>Применить</button></div>`,'adjust');}
 function helpModal(){modal(`${head('Проверяемая альфа 0.3')}<p>Одиночная кооперативная партия без кампании: общий фиксированный стол 3×5, реальные изображения карт, сбор персонажа, виртуальные двусторонние руны и проверка доступных карт реакций.</p><p>Для 1–3 участников по правилам используются 4 карты в каждом акте. Пятая ячейка сохраняет размер раскладки и предусмотрена для будущей партии вчетвером.</p><div class="infoBlock">Пока требуют ручной проверки: часть индивидуальных свойств, эффекты злодея и наследия, применение сложных карт действий, повторный бросок и окончательный подсчёт. Результаты рун рассчитываются автоматически. Без API.</div><div class="rollButtons"><button class="modalButton" data-export>Экспорт JSON</button><button class="modalButton" data-import>Загрузить JSON</button></div>`,'help');}
 function plotModal(){modal(`${head('Злодейский замысел')}<p>В одиночной партии злодей начинает с 5 ${I('resource_xp')}. Когда результат боя <b>строго выше</b> сложности, злодей теряет опыт в размере разницы.</p><p>Когда испытание провалено, злодей получает опыт. Особые варианты замысла и эффекты конкретного злодея требуют подтверждения по изображениям.</p>`,'plot');}
-function logModal(){modal(`${head('Журнал событий')}<div>${(state.events||[]).slice(-35).reverse().map(x=>`<p class="pathLine"><small class="smallPrint">Ход ${x.turn}</small> ${H(x.text)}</p>`).join('')}</div>`,'log');}
+function logModal(page=0){
+ const events=(state.events||[]).slice(-35).reverse(),total=Math.max(1,Math.ceil(events.length/7));page=Math.max(0,Math.min(page,total-1));
+ modal(`${head('Журнал событий')}<div>${events.slice(page*7,(page+1)*7).map(x=>`<p class="pathLine"><small class="smallPrint">Ход ${x.turn}</small> ${H(x.text)}</p>`).join('')||'Событий пока нет'}</div>${pager(page,total,'logpage')}`,'log');
+}
 function exportSave(){const b=new Blob([JSON.stringify({format:'istoki-save-v3',game:state},null,2)],{type:'application/json'}),a=document.createElement('a');a.download='istoki_save_03.json';a.href=URL.createObjectURL(b);a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
 function importSave(){const input=document.createElement('input');input.type='file';input.accept='.json,application/json';input.onchange=async()=>{try{const d=JSON.parse(await input.files[0].text());if(!['istoki-save-v1','istoki-save-v2','istoki-save-v3'].includes(d.format)||d.game?.schema!==1)throw Error('Неподдерживаемый формат');state=d.game;closeModal();save();render();}catch(e){alert(e.message);}};input.click();}
 function originActionModal(){modal(`${head('Беглец · выбор действия')}<p>После странствия возьми одну карту:</p><div class="rollButtons"><button class="goldBtn" data-originpick="hero">${I('action_hero')} Героя</button><button class="goldBtn" data-originpick="antihero">${I('action_anti')} Антигероя</button></div>`,'origin');}
-function discardModal(act){const ids=state.discardActs?.[act]||[];modal(`${head('Сброс акта '+act+' · '+ids.length)}<div class="rollLine">${ids.length?ids.slice().reverse().map(id=>`<button class="discardFace" data-view="${id}">${src(id)}<span>${H(card(id)?.title)}</span></button>`).join(''):'В этой стопке пока нет карт.'}</div>`,'discard');}
+function discardModal(act,page=0){
+ const ids=(state.discardActs?.[act]||[]).slice().reverse(),total=Math.max(1,Math.ceil(ids.length/5));page=Math.max(0,Math.min(page,total-1));
+ modal(`${head('Сброс акта '+act+' · '+ids.length)}<div class="rollLine">${ids.length?ids.slice(page*5,(page+1)*5).map(id=>`<button class="discardFace" data-view="${id}">${src(id)}<span>${H(card(id)?.title)}</span></button>`).join(''):'В этой стопке пока нет карт.'}</div>${pager(page,total,'discardpage',act+':')}`,'discard');
+}
 async function toggleFullscreen(){try{if(document.fullscreenElement){await document.exitFullscreen();}else{await document.documentElement.requestFullscreen({navigationUI:'hide'});}adapt();}catch(e){modal(`${head('Полный экран')}<p>Браузер не разрешил полноэкранный режим для локального файла. В Chrome попробуй меню браузера или «Добавить на главный экран». Это ограничение браузера, а не игрового поля.</p><button class="modalButton" data-close>Понятно</button>`);}}
 let swipeStart=null;
 document.addEventListener('touchstart',e=>{const x=e.target.closest('[data-swipe]');if(x)swipeStart={type:x.dataset.swipe,y:e.touches[0].clientY,x:e.touches[0].clientX};},{passive:true});
@@ -654,6 +790,9 @@ document.addEventListener('click',event=>{
  if(d.startgame!==undefined)return safe(()=>{state=E.createGame(DB,picks,{villainId:villainChoice});closeModal();});
  if(d.new!==undefined){if(confirm('Начать новую партию?'))return startSetup();return;}
  if(d.market){const [a,i]=d.market.split(':').map(Number);return openCard(state.market[a]?.[i],d.market);}
+ if(d.discardpage){const [act,page]=d.discardpage.split(':').map(Number);return discardModal(act,page);}
+ if(d.handpage!==undefined)return handsModal(Number(d.handpage));
+ if(d.logpage!==undefined)return logModal(Number(d.logpage));
  if(d.discard)return discardModal(Number(d.discard));
  if(d.view)return openCard(d.view);
  if(d.vother)return openZoom(d.vother);
