@@ -33,7 +33,7 @@ input[type=checkbox]{accent-color:#54d9ed}
 </style>
 </head>
 <body>
-<header><b>Ходьба 3/4 · полигон</b><small>v0.2.1 · анатомия</small></header>
+<header><b>Ходьба 3/4 · полигон</b><small>v0.2.2 · стороны</small></header>
 <div id="stage">
 <canvas id="view"></canvas>
 <div id="legend"><em>Л — левая</em> · <strong>П — правая</strong><br>зелёный + — опора тела<br>кольцо — зафиксированная стопа</div>
@@ -67,7 +67,7 @@ const $=id=>document.getElementById(id);
 const BONES=Object.freeze({thigh:.80,shin:.80,upperArm:.60,forearm:.54,torso:.86,headOffset:1.23});
 const TAU=Math.PI*2,STANCE=.64,UPPER=BONES.thigh,LOWER=BONES.shin;
 const CAM={ux:36,uy:18,vx:-36,vy:18,h:72};
-const legs=[{id:"Л",side:1,off:0,color:"#59d9ff"},{id:"П",side:-1,off:.5,color:"#ffad64"}];
+const legs=[{id:"П",side:1,off:0,color:"#ffad64"},{id:"Л",side:-1,off:.5,color:"#59d9ff"}];
 const s={x:0,y:0,phase:0,dir:0,face:1,turn:1,vel:0,speed:1,paused:false,anatomy:false,slide:0,pop:0,stretch:0,limp:null};
 let W=1,H=1,ox=0,oy=0,prevStamp=0,hudWait=0;
 function frac(n){return ((n%1)+1)%1}
