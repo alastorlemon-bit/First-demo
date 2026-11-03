@@ -505,6 +505,36 @@ function extractSheetPieces(image){
  return components.sort((a,b)=>b.count-a.count).slice(0,9)
    .sort((a,b)=>a.y-b.y||a.x-b.x);
 }
+// Только лабораторная диагностика: измерение центров бирюзовых шарниров
+// по исходным пикселям, без сдвига скелета и изменения исходного атласа.
+function measureTurquoise(image,boxes){
+ const c=document.createElement("canvas");c.width=image.naturalWidth;c.height=image.naturalHeight;
+ const g=c.getContext("2d",{willReadFrequently:true});g.drawImage(image,0,0);
+ const px=g.getImageData(0,0,c.width,c.height).data,results=[];
+ for(const box of boxes){
+  const w=box.w,h=box.h,mask=new Uint8Array(w*h),seen=new Uint8Array(w*h);
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+   const at=((box.y+y)*c.width+box.x+x)*4,r=px[at],gr=px[at+1],b=px[at+2],a=px[at+3];
+   if(a>100&&gr>r+14&&b>r+12&&gr>73&&b>73)mask[y*w+x]=1;
+  }
+  const found=[],queue=new Int32Array(w*h);
+  for(let pos=0;pos<mask.length;pos++){
+   if(!mask[pos]||seen[pos])continue;
+   let head=0,tail=1,n=0,sx=0,sy=0;queue[0]=pos;seen[pos]=1;
+   while(head<tail){
+    const q=queue[head++],y=Math.floor(q/w),x=q-y*w;
+    n++;sx+=x;sy+=y;
+    for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+     const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=w||ny>=h)continue;
+     const ni=ny*w+nx;if(mask[ni]&&!seen[ni]){seen[ni]=1;queue[tail++]=ni}
+    }
+   }
+   if(n>20)found.push({n,x:+(sx/n/w).toFixed(3),y:+(sy/n/h).toFixed(3)});
+  }
+  results.push(found.sort((a,b)=>b.n-a.n).slice(0,7));
+ }
+ return results;
+}
 function previewSheet(){
  const target=$("artPreview"),mapping=$("artMapping");
  target.replaceChildren();mapping.replaceChildren();
@@ -560,6 +590,8 @@ function previewSheet(){
 }
 function setSheetImage(image){
  sheet.image=image;sheet.boxes=extractSheetPieces(image);
+ $("artMessage").dataset.boxes=JSON.stringify(sheet.boxes);
+ $("artMessage").dataset.joints=JSON.stringify(measureTurquoise(image,sheet.boxes));
  $("spriteMode").checked=false;
  $("spriteMode").disabled=sheet.boxes.length!==9;
  if(sheet.boxes.length!==9){
