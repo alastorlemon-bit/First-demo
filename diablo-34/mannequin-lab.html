@@ -1,0 +1,944 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Diablo 3/4 — мастер-манекен · лаборатория</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden}
+body{height:100dvh;display:flex;flex-direction:column;background:#101923;color:#e9f2fa;font:14px system-ui,Arial}
+header{padding:9px 12px 5px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+header b{font-size:15px}header small{font-size:11px;color:#a8bccd}
+#dimensions{position:absolute;top:40px;right:8px;max-width:40%;padding:8px;background:#112432e6;border:1px solid #3f6172;border-radius:8px;font-size:11px;line-height:1.5}
+#dimensions[hidden]{display:none}
+@media(max-width:350px){#dimensions{top:102px}}
+#stage{position:relative;flex:1;min-height:170px;overflow:hidden}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+#legend{position:absolute;top:7px;left:9px;padding:5px 8px;border-radius:7px;background:#142432df;font-size:11px;line-height:1.45;pointer-events:none}
+#legend em{color:#5ed8ff;font-style:normal}#legend strong{color:#ffb66d}
+#controls{flex:none;padding:7px 9px max(9px,env(safe-area-inset-bottom));background:#192734;border-top:1px solid #344657;max-height:49dvh;overflow:auto}
+.buttons{display:flex;gap:6px;margin-bottom:6px}
+button{flex:1;min-width:0;border:1px solid #506477;background:#293e50;color:#fff;border-radius:9px;min-height:42px;font:600 13px system-ui}
+button.active{background:#216e80;border-color:#53d1df}button:active{filter:brightness(1.3)}
+#options{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:2px 2px 7px}
+#speedLabel{display:flex;gap:7px;align-items:center;flex:1;min-width:0;white-space:nowrap;font-size:12px}
+#speed{width:100%;min-width:40px;accent-color:#54d9ed}#rigLabel{white-space:nowrap;font-size:12px}
+input[type=checkbox]{accent-color:#54d9ed}
+#meters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+.meter{border-radius:7px;background:#0f1d28;text-align:center;padding:6px 2px;min-width:0}
+.meter span{display:block;font-size:9px;letter-spacing:.1px;color:#abc1d0}
+.meter b{display:block;font-size:12px;margin-top:2px;white-space:nowrap}
+.ok{color:#70e5a2}.warn{color:#ffb36b}
+#note{color:#a2b4c3;font-size:10px;margin-top:6px;line-height:1.3}
+#widthReadout{font-size:11px;color:#b2dbe7;padding:0 2px 6px;line-height:1.25}
+.widthButtons button{font-size:12px;min-height:40px}
+/* Изолированный графический адаптер: исходный риг/ходьба не меняются. */
+#artTools{position:absolute;z-index:5;top:auto;bottom:7px;right:7px;width:max-content;max-width:min(80vw,340px);max-height:calc(100% - 14px);overflow:auto;color:#eef8ff;background:#102330f2;border:1px solid #527886;border-radius:10px;box-shadow:0 6px 22px #0009}
+#artTools summary{cursor:pointer;padding:7px 10px;font-size:12px;font-weight:700;list-style:none;touch-action:manipulation}
+#artTools[open]{width:min(88vw,340px);max-width:none}\n#artTools[open] summary{border-bottom:1px solid #34515b}
+#artPanel{padding:9px;display:grid;gap:8px;font-size:12px}
+#artPanel p{margin:0;color:#b8cad6;line-height:1.45}
+#artPanel input[type=file]{max-width:100%;font-size:12px}
+#artPanel input[type=range]{width:100%;vertical-align:middle}
+#artPanel label{display:flex;gap:8px;align-items:center;justify-content:space-between}
+#artPanel label select{min-width:86px;padding:5px;background:#172f3e;border:1px solid #527281;border-radius:5px;color:#f2f8fa}
+#artPreview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+.spriteTile{min-width:0;border:1px solid #435d69;border-radius:6px;background:#243d47}
+.spriteTile canvas{width:100%;height:70px;object-fit:contain}
+.spriteTile span{display:block;text-align:center;font-size:11px}
+#artMapping{display:grid;grid-template-columns:1fr;gap:5px}
+#artMessage{color:#f1d58e;line-height:1.4}
+#artTools .hint{font-size:11px;color:#a5c3cf}
+
+
+@media(max-width:600px){
+ header{padding:5px 9px 3px;min-height:29px}
+ header b{font-size:12px;line-height:1.1}
+ header small{font-size:9px;max-width:90px;text-align:right}
+ #stage{min-height:190px}
+ #legend,#dimensions{display:none!important}
+ #controls{padding:4px 6px max(5px,env(safe-area-inset-bottom));max-height:44dvh}
+ .buttons{gap:4px;margin-bottom:4px}
+ button{min-height:32px;border-radius:7px;font-size:11px;font-weight:650}
+ .widthButtons button{min-height:31px;font-size:11px}
+ #widthReadout{font-size:9px;line-height:1.2;padding:0 1px 4px}
+ #options{gap:6px;padding:0 2px 4px}
+ #speedLabel,#rigLabel{font-size:10px}
+ #speed{min-width:28px}
+ #meters{gap:3px}
+ .meter{padding:3px 1px}
+ .meter span{font-size:8px;letter-spacing:0}
+ .meter b{font-size:11px;margin-top:1px}
+ #note{display:none}
+ #artTools summary{padding:6px 9px;font-size:11px}
+ #artTools[open]{width:min(94vw,340px)}
+ #artPanel{padding:7px;gap:6px}
+ #artPanel label{font-size:11px}
+}
+</style>
+</head>
+<body>
+<header><b>Мастер-манекен · шарниры 3/4</b><small>CMU/IK сохранены</small></header>
+<div id="stage">
+<canvas id="view"></canvas>
+<div id="legend"><em>Л — левая</em> · <strong>П — правая</strong><br>зелёный + — опора тела<br>кольцо — зафиксированная стопа</div>
+<div id="dimensions" hidden><b>Длины костей</b><br>Бедро: 0.80<br>Голень: 0.80<br>Плечо: 0.60<br>Предплечье: 0.54<br>Корпус: 0.86<br>Рост: ≈7 голов</div>
+<details id="artTools"><summary>🎨 Детали · настроить</summary>
+ <div id="artPanel">
+  <label>Сменить лист: <input id="sheetInput" type="file" accept="image/png,image/webp"></label>
+  <div id="artMessage">Автозагрузка листа графики…</div>
+  <label><span>Показывать графику</span><input id="spriteMode" type="checkbox" disabled></label>
+  <label><span>Ширина деталей <output id="widthValue">100%</output></span><input id="spriteWidth" type="range" min="50" max="150" value="100" step="5"></label>
+  <p>Ниже появятся фрагменты PNG с номерами. Назначь каждый номер анатомической детали. Правая/левая — стороны самого персонажа.</p>
+  <div id="artPreview"></div>
+  <div id="artMapping"></div>
+  <p class="hint">Повороты и IK остаются оригинальными. Сапоги объединены с голенями: перекат подошвы здесь пока не отображается отдельно.</p>
+ </div>
+</details>
+</div>
+<div id="controls">
+<div class="buttons widthButtons"><button id="widthOrig">Узкий · 19</button><button id="widthMid">Средний · 26</button><button id="widthWide">Широкий · 39</button></div>
+<div id="widthReadout" aria-live="polite"></div>
+<div class="buttons"><button id="cmu">● CMU · запись</button><button id="classic">○ Старая походка</button></div>
+<div class="buttons">
+<button id="sw">↙ SW идти</button><button id="ne">↗ NE идти</button><button id="stop">■ Стоп</button>
+</div>
+<div class="buttons">
+<button id="pause">⏸ Пауза</button><button id="frame">+1 кадр</button><button id="anatomy">🦴 Т-поза</button><button id="reset">↺ Сброс</button>
+</div>
+<div id="options">
+<label id="speedLabel">Скорость <output id="speedValue">1.0</output><input id="speed" type="range" min="0.6" max="1.5" step="0.1" value="1.0"></label>
+<label id="rigLabel"><input id="rig" type="checkbox" checked> Кости и IK</label>
+</div>
+<div id="meters">
+<div class="meter"><span>FOOT SLIDE</span><b class="ok" id="slide">0.000</b></div>
+<div class="meter"><span>LIMP</span><b id="limp">—</b></div>
+<div class="meter"><span>STRETCH</span><b class="ok" id="stretch">0.0%</b></div>
+<div class="meter"><span>POP / 60 fps</span><b class="ok" id="pop">0.0 px</b></div>
+</div>
+<div id="note">Изолированная проба бирюзового манекена на широком риге. Скелет и оригинальный персонаж не изменены.</div>
+</div>
+<script src="./mannequin-sheet.js"></script>
+<script>
+"use strict";
+// Камера: аксонометрия 2:1; ось X ↘, ось Y ↙, высота вычитается из экранного Y.
+// Мировая точка опоры отдельно от тела; два ракурса, процедурный риг.
+const canvas=document.getElementById("view"),ctx=canvas.getContext("2d");
+const $=id=>document.getElementById(id);
+const BONES=Object.freeze({thigh:.80,shin:.80,upperArm:.60,forearm:.54,torso:.86,headOffset:1.23});
+const TAU=Math.PI*2,STANCE=.64,UPPER=BONES.thigh,LOWER=BONES.shin;
+// Carnegie Mellon University Motion Capture Database, subject 08, trial 01 (walk).
+// BVH conversion: https://github.com/una-dinosauria/cmu-mocap/blob/master/data/008/08_01.bvh
+// Исходная запись 120 fps, период 121 кадр; нормализованные суставные векторы и
+// траектории стоп перепакованы в 64 семпла. Никаких внешних загрузок.
+// Продольный шаг уменьшен до 85% под длины костей; шаг/cadence синхронен с корпусом.
+// Порядок: тазZ, Л(стопаX,Y,Z), П(стопаX,Y,Z), колено Л/П (по 3),
+// плечо-предплечье/предплечье-кисть Л/П (по 3).
+const MOCAP={cadence:120/121,velocity:2.15985,stride:2.58807,scale:.11,retarget:.85,
+  starts:{Л:.018,П:.515},ends:{Л:.420,П:.915},samples:[[1.54,0.11,-0.694,0.221,-0.081,0.717,0.121,0,0.877,-0.48,0.16,0.898,0.41,0.181,0.342,-0.922,-0.02,0.984,-0.177,0.178,-0.528,-0.83,-0.026,-0.399,-0.917],[1.538,0.116,-0.672,0.24,-0.075,0.737,0.115,0.016,0.869,-0.494,0.14,0.91,0.391,0.19,0.324,-0.927,-0.024,0.987,-0.162,0.184,-0.531,-0.827,-0.02,-0.405,-0.914],[1.537,0.122,-0.643,0.267,-0.079,0.762,0.114,0.028,0.849,-0.528,0.144,0.915,0.376,0.195,0.303,-0.933,-0.021,0.987,-0.16,0.19,-0.525,-0.829,-0.013,-0.405,-0.914],[1.533,0.13,-0.602,0.286,-0.081,0.77,0.11,0.022,0.836,-0.549,0.14,0.926,0.352,0.198,0.268,-0.943,-0.021,0.986,-0.168,0.194,-0.516,-0.834,-0.01,-0.399,-0.917],[1.533,0.137,-0.546,0.309,-0.082,0.776,0.111,0.02,0.83,-0.557,0.109,0.94,0.323,0.196,0.228,-0.954,-0.014,0.982,-0.188,0.194,-0.505,-0.841,-0.01,-0.386,-0.923],[1.536,0.141,-0.489,0.339,-0.08,0.781,0.113,0.016,0.826,-0.564,0.084,0.952,0.295,0.196,0.192,-0.962,-0.009,0.976,-0.218,0.193,-0.49,-0.85,-0.009,-0.366,-0.931],[1.541,0.146,-0.419,0.365,-0.076,0.784,0.116,0.017,0.827,-0.562,0.07,0.961,0.266,0.196,0.163,-0.968,-0.008,0.965,-0.26,0.188,-0.472,-0.861,-0.009,-0.335,-0.942],[1.548,0.152,-0.346,0.394,-0.072,0.787,0.116,0.02,0.829,-0.559,0.064,0.969,0.235,0.195,0.138,-0.972,-0.006,0.946,-0.321,0.183,-0.452,-0.873,-0.015,-0.299,-0.954],[1.556,0.154,-0.27,0.422,-0.069,0.789,0.116,0.028,0.833,-0.552,0.067,0.976,0.203,0.184,0.103,-0.979,0.004,0.924,-0.379,0.175,-0.425,-0.888,-0.014,-0.257,-0.966],[1.564,0.154,-0.184,0.439,-0.068,0.788,0.117,0.037,0.844,-0.535,0.078,0.981,0.172,0.171,0.079,-0.983,0.015,0.893,-0.446,0.167,-0.392,-0.905,-0.017,-0.21,-0.977],[1.572,0.152,-0.095,0.452,-0.068,0.787,0.118,0.05,0.856,-0.514,0.079,0.986,0.141,0.162,0.062,-0.986,0.024,0.853,-0.518,0.16,-0.354,-0.921,-0.023,-0.153,-0.987],[1.578,0.15,0.001,0.457,-0.066,0.79,0.117,0.058,0.873,-0.485,0.074,0.99,0.112,0.15,0.038,-0.99,0.039,0.801,-0.592,0.152,-0.307,-0.939,-0.029,-0.095,-0.993],[1.585,0.151,0.1,0.457,-0.066,0.792,0.117,0.064,0.891,-0.45,0.071,0.993,0.083,0.135,0.012,-0.993,0.056,0.741,-0.663,0.148,-0.24,-0.959,-0.036,-0.047,-0.996],[1.592,0.152,0.2,0.449,-0.065,0.794,0.116,0.065,0.911,-0.408,0.073,0.994,0.057,0.121,-0.013,-0.995,0.077,0.673,-0.729,0.141,-0.192,-0.971,-0.039,0.027,-0.995],[1.596,0.152,0.304,0.436,-0.065,0.796,0.117,0.065,0.929,-0.363,0.071,0.995,0.029,0.109,-0.036,-0.996,0.089,0.594,-0.792,0.136,-0.138,-0.981,-0.042,0.098,-0.99],[1.598,0.15,0.412,0.416,-0.064,0.798,0.116,0.069,0.947,-0.314,0.069,0.995,0.001,0.098,-0.061,-0.996,0.1,0.511,-0.846,0.126,-0.094,-0.987,-0.042,0.179,-0.977],[1.599,0.147,0.519,0.391,-0.063,0.8,0.119,0.068,0.962,-0.264,0.059,0.995,-0.027,0.084,-0.084,-0.996,0.115,0.426,-0.889,0.119,-0.054,-0.991,-0.044,0.265,-0.957],[1.6,0.146,0.631,0.365,-0.06,0.802,0.121,0.065,0.976,-0.21,0.038,0.995,-0.057,0.075,-0.103,-0.995,0.128,0.333,-0.925,0.107,-0.016,-0.994,-0.044,0.35,-0.928],[1.597,0.147,0.752,0.33,-0.054,0.806,0.121,0.056,0.988,-0.146,0.023,0.993,-0.082,0.066,-0.126,-0.994,0.137,0.237,-0.952,0.098,0.032,-0.994,-0.044,0.429,-0.893],[1.594,0.147,0.877,0.293,-0.05,0.808,0.123,0.044,0.996,-0.083,0.006,0.99,-0.109,0.052,-0.15,-0.991,0.147,0.142,-0.968,0.084,0.069,-0.994,-0.042,0.507,-0.85],[1.593,0.147,1.003,0.259,-0.046,0.811,0.125,0.031,0.999,-0.021,-0.013,0.986,-0.137,0.043,-0.175,-0.988,0.153,0.053,-0.975,0.072,0.113,-0.991,-0.04,0.578,-0.802],[1.595,0.145,1.127,0.229,-0.045,0.814,0.126,0.016,0.999,0.031,-0.047,0.98,-0.17,0.037,-0.207,-0.983,0.154,-0.03,-0.975,0.057,0.154,-0.986,-0.038,0.642,-0.75],[1.596,0.151,1.275,0.202,-0.045,0.819,0.13,-0.01,0.994,0.106,-0.05,0.975,-0.191,0.03,-0.242,-0.975,0.151,-0.095,-0.97,0.048,0.205,-0.977,-0.041,0.694,-0.702],[1.59,0.146,1.406,0.174,-0.046,0.821,0.127,-0.033,0.986,0.162,-0.07,0.968,-0.218,0.023,-0.285,-0.965,0.144,-0.146,-0.964,0.037,0.25,-0.967,-0.038,0.744,-0.646],[1.589,0.144,1.542,0.157,-0.048,0.824,0.131,-0.061,0.974,0.219,-0.094,0.959,-0.247,0.017,-0.327,-0.952,0.14,-0.192,-0.956,0.023,0.288,-0.957,-0.03,0.788,-0.591],[1.588,0.145,1.675,0.151,-0.05,0.826,0.135,-0.114,0.955,0.272,-0.119,0.948,-0.273,0.012,-0.368,-0.938,0.14,-0.236,-0.945,0.009,0.325,-0.945,-0.021,0.827,-0.535],[1.585,0.143,1.799,0.153,-0.051,0.833,0.136,-0.186,0.93,0.317,-0.153,0.935,-0.298,0.005,-0.409,-0.921,0.14,-0.278,-0.933,-0.002,0.361,-0.932,-0.019,0.857,-0.483],[1.581,0.135,1.91,0.159,-0.056,0.838,0.139,-0.242,0.905,0.351,-0.171,0.923,-0.323,-0.002,-0.445,-0.905,0.141,-0.312,-0.922,-0.014,0.391,-0.919,-0.011,0.884,-0.432],[1.578,0.125,2.009,0.17,-0.059,0.841,0.146,-0.244,0.891,0.383,-0.172,0.911,-0.354,-0.007,-0.481,-0.888,0.135,-0.338,-0.913,-0.024,0.413,-0.91,-0.01,0.903,-0.388],[1.572,0.115,2.088,0.173,-0.06,0.849,0.153,-0.272,0.878,0.393,-0.152,0.9,-0.387,-0.011,-0.507,-0.874,0.132,-0.367,-0.901,-0.033,0.433,-0.9,-0.01,0.918,-0.349],[1.566,0.105,2.146,0.17,-0.063,0.856,0.163,-0.258,0.882,0.396,-0.139,0.891,-0.412,-0.017,-0.528,-0.862,0.13,-0.391,-0.891,-0.046,0.447,-0.892,-0.008,0.929,-0.317],[1.557,0.097,2.184,0.159,-0.066,0.865,0.174,-0.241,0.883,0.402,-0.128,0.882,-0.433,-0.022,-0.543,-0.853,0.126,-0.413,-0.881,-0.058,0.449,-0.891,-0.005,0.938,-0.288],[1.546,0.086,2.21,0.145,-0.071,0.874,0.189,-0.166,0.905,0.391,-0.11,0.873,-0.455,-0.026,-0.55,-0.848,0.12,-0.431,-0.872,-0.07,0.441,-0.893,-0.004,0.944,-0.263],[1.543,0.08,2.229,0.139,-0.081,0.892,0.208,-0.147,0.917,0.371,-0.093,0.863,-0.476,-0.032,-0.551,-0.848,0.11,-0.436,-0.87,-0.08,0.431,-0.897,-0.005,0.948,-0.25],[1.542,0.085,2.253,0.14,-0.09,0.92,0.228,-0.157,0.922,0.354,-0.074,0.855,-0.493,-0.035,-0.543,-0.854,0.093,-0.438,-0.87,-0.086,0.408,-0.907,-0.009,0.948,-0.245],[1.539,0.088,2.268,0.139,-0.099,0.955,0.248,-0.15,0.932,0.33,-0.063,0.846,-0.51,-0.034,-0.528,-0.863,0.08,-0.433,-0.872,-0.089,0.373,-0.921,-0.015,0.947,-0.247],[1.539,0.087,2.276,0.143,-0.109,1.006,0.269,-0.133,0.943,0.306,-0.061,0.84,-0.518,-0.036,-0.511,-0.873,0.071,-0.422,-0.877,-0.091,0.329,-0.938,-0.02,0.943,-0.258],[1.539,0.086,2.284,0.146,-0.122,1.068,0.293,-0.117,0.953,0.28,-0.05,0.839,-0.521,-0.037,-0.495,-0.882,0.074,-0.403,-0.885,-0.091,0.284,-0.952,-0.025,0.936,-0.28],[1.54,0.085,2.29,0.147,-0.134,1.129,0.323,-0.112,0.961,0.252,-0.035,0.838,-0.524,-0.036,-0.477,-0.892,0.078,-0.382,-0.893,-0.088,0.237,-0.965,-0.029,0.925,-0.311],[1.545,0.084,2.291,0.148,-0.14,1.203,0.353,-0.111,0.969,0.219,-0.034,0.84,-0.52,-0.034,-0.457,-0.903,0.084,-0.358,-0.902,-0.081,0.19,-0.976,-0.034,0.913,-0.343],[1.55,0.083,2.291,0.145,-0.146,1.272,0.391,-0.114,0.976,0.185,-0.037,0.84,-0.52,-0.032,-0.431,-0.915,0.092,-0.328,-0.912,-0.074,0.147,-0.984,-0.032,0.896,-0.384],[1.568,0.084,2.289,0.153,-0.165,1.403,0.41,-0.114,0.982,0.149,-0.022,0.866,-0.474,-0.03,-0.401,-0.929,0.098,-0.294,-0.922,-0.065,0.107,-0.99,-0.029,0.874,-0.43],[1.568,0.084,2.291,0.147,-0.135,1.476,0.424,-0.116,0.986,0.12,-0.06,0.87,-0.464,-0.027,-0.37,-0.941,0.115,-0.253,-0.933,-0.051,0.067,-0.994,-0.029,0.846,-0.483],[1.57,0.085,2.29,0.149,-0.138,1.559,0.427,-0.114,0.989,0.091,-0.062,0.881,-0.443,-0.02,-0.331,-0.956,0.127,-0.208,-0.942,-0.036,0.034,-0.997,-0.033,0.806,-0.545],[1.574,0.085,2.291,0.147,-0.139,1.658,0.429,-0.114,0.991,0.065,-0.058,0.899,-0.406,-0.018,-0.293,-0.968,0.146,-0.154,-0.949,-0.021,0.006,-0.998,-0.039,0.755,-0.614],[1.577,0.085,2.291,0.145,-0.138,1.762,0.423,-0.116,0.992,0.038,-0.061,0.916,-0.366,-0.01,-0.247,-0.98,0.143,-0.086,-0.958,-0.011,-0.034,-0.997,-0.035,0.703,-0.674],[1.584,0.087,2.291,0.147,-0.135,1.876,0.409,-0.118,0.993,0.01,-0.058,0.935,-0.315,-0.005,-0.202,-0.99,0.145,-0.003,-0.961,0.005,-0.065,-0.996,-0.04,0.635,-0.738],[1.586,0.087,2.292,0.147,-0.135,1.983,0.391,-0.121,0.993,-0.017,-0.053,0.951,-0.267,0.001,-0.16,-0.996,0.144,0.088,-0.958,0.019,-0.105,-0.992,-0.039,0.565,-0.794],[1.586,0.087,2.292,0.148,-0.136,2.091,0.37,-0.115,0.992,-0.047,-0.043,0.964,-0.218,0.005,-0.124,-1.001,0.142,0.187,-0.944,0.035,-0.133,-0.989,-0.043,0.483,-0.848],[1.585,0.086,2.296,0.149,-0.138,2.205,0.341,-0.108,0.991,-0.073,-0.035,0.976,-0.162,0.014,-0.088,-1.004,0.137,0.286,-0.921,0.048,-0.161,-0.984,-0.046,0.391,-0.895],[1.583,0.085,2.299,0.151,-0.136,2.327,0.308,-0.091,0.991,-0.101,-0.029,0.985,-0.101,0.025,-0.053,-1.006,0.128,0.386,-0.886,0.063,-0.184,-0.979,-0.05,0.296,-0.932],[1.583,0.084,2.3,0.154,-0.131,2.456,0.274,-0.071,0.989,-0.13,-0.02,0.99,-0.035,0.035,-0.017,-1.006,0.119,0.477,-0.844,0.079,-0.212,-0.973,-0.054,0.207,-0.958],[1.583,0.084,2.301,0.154,-0.128,2.59,0.241,-0.06,0.985,-0.159,-0.009,0.992,0.031,0.047,0.022,-1.005,0.109,0.562,-0.794,0.094,-0.232,-0.967,-0.058,0.117,-0.975],[1.584,0.084,2.304,0.16,-0.125,2.724,0.207,-0.043,0.982,-0.186,0.003,0.989,0.092,0.06,0.062,-1.002,0.097,0.64,-0.737,0.107,-0.253,-0.961,-0.062,0.028,-0.984],[1.584,0.084,2.308,0.162,-0.124,2.861,0.179,-0.013,0.977,-0.214,0.016,0.982,0.153,0.075,0.103,-0.997,0.082,0.709,-0.675,0.121,-0.279,-0.952,-0.064,-0.053,-0.985],[1.584,0.086,2.309,0.165,-0.122,3.003,0.158,-0.005,0.971,-0.241,0.03,0.972,0.214,0.088,0.145,-0.99,0.068,0.766,-0.615,0.133,-0.306,-0.942,-0.064,-0.132,-0.98],[1.582,0.087,2.31,0.166,-0.121,3.139,0.143,0.012,0.963,-0.268,0.052,0.958,0.27,0.101,0.192,-0.979,0.056,0.813,-0.556,0.143,-0.336,-0.931,-0.061,-0.194,-0.972],[1.581,0.089,2.313,0.169,-0.119,3.272,0.138,0.034,0.955,-0.295,0.081,0.941,0.321,0.113,0.23,-0.969,0.042,0.856,-0.494,0.151,-0.361,-0.92,-0.058,-0.248,-0.961],[1.58,0.09,2.315,0.171,-0.117,3.392,0.144,0.055,0.939,-0.339,0.115,0.923,0.364,0.127,0.263,-0.958,0.027,0.89,-0.435,0.159,-0.394,-0.905,-0.052,-0.287,-0.952],[1.578,0.093,2.318,0.176,-0.111,3.498,0.151,0.049,0.916,-0.398,0.127,0.908,0.397,0.138,0.295,-0.946,0.015,0.917,-0.379,0.166,-0.425,-0.89,-0.048,-0.323,-0.942],[1.572,0.094,2.323,0.18,-0.103,3.59,0.157,0.024,0.894,-0.447,0.121,0.897,0.424,0.146,0.319,-0.937,0.007,0.94,-0.325,0.171,-0.458,-0.872,-0.044,-0.345,-0.935],[1.566,0.096,2.329,0.189,-0.096,3.659,0.157,0,0.877,-0.48,0.142,0.888,0.438,0.158,0.337,-0.928,-0.005,0.957,-0.278,0.173,-0.486,-0.857,-0.038,-0.36,-0.931],[1.559,0.1,2.335,0.2,-0.093,3.712,0.151,0,0.877,-0.48,0.16,0.885,0.44,0.166,0.347,-0.922,-0.012,0.969,-0.236,0.175,-0.505,-0.845,-0.032,-0.374,-0.926],[1.548,0.104,2.34,0.208,-0.089,3.743,0.138,0,0.877,-0.48,0.177,0.886,0.429,0.171,0.349,-0.921,-0.015,0.979,-0.2,0.177,-0.52,-0.835,-0.026,-0.386,-0.922]]};
+function mocapPose(phase){
+ const u=frac(phase)*MOCAP.samples.length, i=Math.floor(u), t=u-i;
+ const a=MOCAP.samples[i],b=MOCAP.samples[(i+1)%MOCAP.samples.length];
+ return a.map((v,k)=>mix(v,b[k],t));
+}
+function mocapFoot(l,p){
+ const isLeft=l.id==="Л",i=isLeft?1:4;
+ return {x:p[i],y:p[i+1],height:p[i+2]};
+}
+function withinSwing(phase,l){
+ return phase>=MOCAP.starts[l.id]&&phase<MOCAP.ends[l.id];
+}
+function startMocapSwing(l){
+ const a=mocapFoot(l,mocapPose(MOCAP.starts[l.id])),b=mocapFoot(l,mocapPose(MOCAP.ends[l.id]));
+ l.swing=true;l.stanceSample=l.stanceTime;l.stanceCount++;l.stanceTime=0;
+ l.from={...l.foot};l.mocapA=a;l.mocapB=b;
+ // Модель движется вдоль Y: постоянные зеркальные дорожки стоп по X,
+ // без интегрирования поперечного дрейфа из исходной BVH-записи.
+ // Продольный шаг берём из скорости/cadence: за 100 циклов стопы не уплывают от таза.
+ l.to={x:s.x-s.turn*l.side*.115,y:l.from.y+s.face*(MOCAP.velocity/MOCAP.cadence)};
+}
+function moveMocapSwing(l){
+ const p=mocapFoot(l,mocapPose(s.phase)),a=l.mocapA,b=l.mocapB;
+ const span=MOCAP.ends[l.id]-MOCAP.starts[l.id];
+ const u=clamp((s.phase-MOCAP.starts[l.id])/span,0,1);
+ const raw=clamp((p.y-a.y)/Math.max(.0001,b.y-a.y),0,1);
+ let e=raw;
+ // BVH продолжает движение стопы после касания. Гасим скорость ещё до фиксации опоры.
+ if(u>.70){
+  const endPhase=MOCAP.starts[l.id]+span*.70;
+  const at=v=>mocapFoot(l,mocapPose(endPhase+span*v)).y;
+  const denom=Math.max(.0001,b.y-a.y);
+  const e0=clamp((at(0)-a.y)/denom,0,1);
+  const slope=(at(.002)-at(-.002))/(denom*.004);
+  const t=(u-.70)/.30,t2=t*t,t3=t2*t;
+  e=clamp((2*t3-3*t2+1)*e0+(t3-2*t2+t)*.30*slope+(-2*t3+3*t2),0,1);
+ }
+ const curv=p.x-mix(a.x,b.x,raw);
+ const fade=clamp(Math.min(u*7,(1-u)*7),0,1);
+ l.foot={x:mix(l.from.x,l.to.x,e)+s.turn*curv*fade,y:mix(l.from.y,l.to.y,e)};
+ l.z=Math.max(0,p.height-.165)*Math.min(1,u*12,(1-u)*12);
+}
+
+const CAM={ux:36,uy:18,vx:-36,vy:18,h:72};
+// Только визуальная ширина: смещения плеч совпадают в корпусе и точках крепления рук.
+const WIDTHS=Object.freeze({
+ orig:Object.freeze({label:"Исходная",shoulder:.27,waist:.19,hip:.16}),
+ mid:Object.freeze({label:"Средняя",shoulder:.36,waist:.24,hip:.20}),
+ wide:Object.freeze({label:"Широкая",shoulder:.54,waist:.29,hip:.24})
+});
+let widthKey="wide";
+const widthPreset=()=>WIDTHS[widthKey];
+function setWidth(k){widthKey=k;refreshButtons();paint()}
+
+const legs=[{id:"П",side:1,off:0,color:"#ffad64"},{id:"Л",side:-1,off:.5,color:"#59d9ff"}];
+const s={x:0,y:0,phase:0,dir:0,face:1,turn:1,vel:0,speed:1,paused:false,anatomy:false,mode:"cmu",reorient:null,slide:0,pop:0,stretch:0,limp:null};
+let W=1,H=1,ox=0,oy=0,prevStamp=0,hudWait=0;
+function frac(n){return ((n%1)+1)%1}
+function clamp(n,a,b){return Math.max(a,Math.min(b,n))}
+function mix(a,b,t){return a+(b-a)*t}
+function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
+function vdist(a,b){return Math.hypot(a.x-b.x,a.y-b.y,a.z-b.z)}
+function P(x,y,z=0){return {x:ox+CAM.ux*x+CAM.vx*y,y:oy+CAM.uy*x+CAM.vy*y-z*CAM.h}}
+// Перенос таза на опорную ногу; плечи и голова компенсируют наклон.
+function pelvisSway(){return s.mode==="cmu"&&!s.anatomy?s.turn*.054*Math.cos(TAU*(s.phase-.75)):0}
+function hip(l,z){return {x:s.x+pelvisSway()-s.turn*l.side*widthPreset().hip,y:s.y,z}}
+function refreshButtons(){
+ $("cmu").classList.toggle("active",s.mode==="cmu");
+ $("classic").classList.toggle("active",s.mode==="classic");
+ $("sw").classList.toggle("active",s.dir===1);
+ $("ne").classList.toggle("active",s.dir===-1);
+ $("stop").classList.toggle("active",s.dir===0);
+ $("pause").textContent=s.paused?"▶ Продолжить":"⏸ Пауза";
+ $("anatomy").classList.toggle("active",s.anatomy);
+ $("dimensions").hidden=!s.anatomy;
+ for(const [key,id] of [["orig","widthOrig"],["mid","widthMid"],["wide","widthWide"]])
+  $(id).classList.toggle("active",widthKey===key);
+ const w=widthPreset();
+ $("widthReadout").textContent=w.label+" · плечи "+(2*w.shoulder*CAM.ux).toFixed(1)+" px · талия "+(2*w.waist*CAM.ux).toFixed(1)+" px · таз "+(2*w.hip*CAM.ux).toFixed(1)+" px · голова 28 px";
+}
+function init(){
+ s.x=s.y=s.phase=s.vel=s.slide=s.pop=s.stretch=0;
+ s.dir=0;s.face=1;s.turn=1;s.reorient=null;s.paused=false;s.anatomy=false;s.limp=null;s.lastDt=1/60;
+ for(const l of legs){
+  const first=mocapFoot(l,mocapPose(0));
+  // Контактные якоря адаптированы к нулевому скольжению (в BVH есть небольшой дрейф опор).
+  l.foot=s.mode==="cmu"?{x:first.x,y:l.id==="Л"?-.76*MOCAP.retarget:.46*MOCAP.retarget}:{x:-l.side*.22,y:0};
+  l.from={...l.foot};l.to={...l.foot};
+  l.z=0;l.swing=false;l.last={...l.foot};l.stanceTime=0;
+  l.stanceSample=null;l.stanceCount=0;l.strideSample=null;l.lastLanding=null;l.oldKnee=null;
+ }
+ refreshButtons();updateHUD();
+}
+function smooth(t){return t*t*(3-2*t)}
+function beginTurn(dir){
+ // Оставляем опорную ногу на месте, вторую переставляем; затем меняем опору.
+ const order=legs.slice().sort((a,b)=>Number(b.swing)-Number(a.swing));
+ s.reorient={dir,t:0,duration:.62,startTurn:s.turn,startPhase:s.phase,
+  after:true,order:order.map(l=>l.id),feet:{}};
+ for(const l of legs){
+  const p=mocapFoot(l,mocapPose(0));
+  s.reorient.feet[l.id]={
+   from:{...l.foot},
+   to:{x:s.x+dir*p.x,y:s.y+dir*(l.id==="Л"?-.76*MOCAP.retarget:.46*MOCAP.retarget)}
+  };
+  l.swing=false;l.z=0;l.stanceTime=0;l.oldKnee=null;
+ }
+ s.dir=dir;s.vel=0;s.paused=false;refreshButtons();
+}
+function updateTurn(dt){
+ const r=s.reorient;
+ r.t=clamp(r.t+dt/r.duration,0,1);
+ const e=smooth(r.t);
+ s.turn=mix(r.startTurn,r.dir,e);
+ s.face=s.turn;
+ s.phase=frac(mix(r.startPhase,r.startPhase>.5?1:0,e));
+ for(const l of legs){
+  const idx=r.order.indexOf(l.id),u=clamp(r.t*2-idx,0,1);
+  const v=smooth(u),target=r.feet[l.id];
+  l.foot={x:mix(target.from.x,target.to.x,v),y:mix(target.from.y,target.to.y,v)};
+  l.z=.19*Math.sin(Math.PI*u);
+  l.swing=u>0&&u<1;
+  if(!l.swing)l.last={...l.foot};
+ }
+ if(r.t>=1){
+  s.reorient=null;s.turn=s.face=r.dir;s.phase=0;
+  s.dir=r.after?r.dir:0;
+  s.vel=r.after?r.dir*s.speed*MOCAP.velocity:0;
+  for(const l of legs){
+   l.swing=false;l.z=0;l.from={...l.foot};l.to={...l.foot};
+   l.last={...l.foot};l.stanceTime=0;
+   l.stanceSample=null;l.stanceCount=0;l.strideSample=null;l.lastLanding=null;
+  }
+  s.limp=null;refreshButtons();
+ }
+}
+function drive(dir){
+ if(s.anatomy)init();
+ if(s.reorient)return;
+ if(s.mode==="cmu"&&s.face!==dir&&(s.dir!==0||Math.abs(s.y)>1e-5||s.phase>1e-5||legs.some(l=>l.swing))){
+  beginTurn(dir);return;
+ }
+ // Начальный выбор ракурса до первого шага.
+ if(s.mode==="cmu"&&s.dir===0&&s.face!==dir&&!legs.some(l=>l.swing)){
+  for(const l of legs){
+   l.foot={x:2*s.x-l.foot.x,y:2*s.y-l.foot.y};
+   l.from={...l.foot};l.to={...l.foot};l.last={...l.foot};l.oldKnee=null;
+  }
+ }
+ s.dir=dir;s.face=dir;s.paused=false;
+ if(s.mode==="cmu"){s.vel=dir*s.speed*MOCAP.velocity;s.turn=dir}
+ refreshButtons();
+}
+function stop(){
+ if(s.reorient)s.reorient.after=false;
+ s.dir=0;s.paused=false;s.anatomy=false;refreshButtons()
+}
+$("widthOrig").onclick=()=>setWidth("orig");
+$("widthMid").onclick=()=>setWidth("mid");
+$("widthWide").onclick=()=>setWidth("wide");
+$("cmu").onclick=()=>{if(s.mode!=="cmu"){s.mode="cmu";init();paint()}};
+$("classic").onclick=()=>{if(s.mode!=="classic"){s.mode="classic";init();paint()}};
+$("sw").onclick=()=>drive(1);
+$("ne").onclick=()=>drive(-1);
+$("stop").onclick=stop;
+$("pause").onclick=()=>{if(s.anatomy){s.anatomy=false;s.paused=false}else s.paused=!s.paused;refreshButtons()};
+$("frame").onclick=()=>{s.anatomy=false;s.paused=true;s.lastDt=1/60;simulate(1/60);refreshButtons();paint();updateHUD()};
+$("anatomy").onclick=()=>{const on=!s.anatomy;init();s.anatomy=on;s.paused=on;refreshButtons();paint();updateHUD()};
+$("reset").onclick=init;
+$("speed").oninput=e=>{s.speed=+e.target.value;$("speedValue").textContent=s.speed.toFixed(1)};
+
+function startSwing(l,cadence){
+ l.swing=true;l.stanceSample=l.stanceTime;l.stanceCount++;l.stanceTime=0;
+ l.from={...l.foot};
+ const lead=Math.max(.28,Math.abs(s.vel)/cadence*.50);
+ l.to={x:s.x-s.face*l.side*.22,y:s.y+s.face*lead};
+}
+function land(l){
+ l.swing=false;l.foot={...l.to};l.z=0;
+ if(l.lastLanding)l.strideSample=dist(l.foot,l.lastLanding);
+ l.lastLanding={...l.foot};l.last={...l.foot};
+}
+function simulate(dt){
+ dt=clamp(dt,0,1/30);
+ if(s.reorient){updateTurn(dt);return}
+ s.vel=mix(s.vel,s.dir*s.speed*(s.mode==="cmu"?MOCAP.velocity:1),Math.min(1,dt*6));
+ if(s.dir===0&&Math.abs(s.vel)<.003)s.vel=0;
+ s.turn=mix(s.turn,s.face,Math.min(1,dt*5));
+ s.y+=s.vel*dt;
+ const active=s.dir!==0||s.vel!==0||legs.some(l=>l.swing);
+ if(active){
+  const cadence=s.mode==="cmu"?MOCAP.cadence*s.speed:Math.max(1.06,Math.abs(s.vel)*1.10);
+  const old=s.phase;s.phase=frac(s.phase+dt*cadence);
+  for(const l of legs){
+   const wasSwing=l.swing;
+   if(s.mode==="cmu"){
+    const inSwing=withinSwing(s.phase,l);
+    if(l.swing){
+     if(!inSwing)land(l);else moveMocapSwing(l);
+    }else if(s.dir!==0&&inSwing&&!withinSwing(old,l)){
+     startMocapSwing(l);moveMocapSwing(l);
+    }
+   }else{
+    const before=frac(old+l.off),after=frac(s.phase+l.off);
+    if(l.swing){
+     if(after<before){land(l)}
+     else{
+      const u=clamp((after-STANCE)/(1-STANCE),0,1),e=u*u*(3-2*u);
+      l.foot={x:mix(l.from.x,l.to.x,e),y:mix(l.from.y,l.to.y,e)};
+      l.z=.27*Math.sin(Math.PI*u);
+     }
+    }else if(s.dir!==0&&before<STANCE&&after>=STANCE){
+     startSwing(l,cadence);
+    }
+   }
+   if(!l.swing){
+    if(!wasSwing){
+     s.slide=Math.max(s.slide,dist(l.foot,l.last));
+     if(s.dir!==0)l.stanceTime+=dt;
+    }
+    l.last={...l.foot};
+   }
+  }
+ }
+ const a=legs[0],b=legs[1];
+ if(a.stanceCount>=2&&b.stanceCount>=2){
+  const timeDiff=Math.abs(a.stanceSample-b.stanceSample)/
+   Math.max(.01,(a.stanceSample+b.stanceSample)/2);
+  const stepDiff=a.strideSample!==null&&b.strideSample!==null?
+   Math.abs(a.strideSample-b.strideSample)/
+   Math.max(.01,(a.strideSample+b.strideSample)/2):0;
+  s.limp=Math.max(timeDiff,stepDiff)*100;
+ }
+}
+function pelvisZ(){
+ // CMU: высота таза из mocap; свободная нога не должна её просаживать.
+ // Старой походке, Т-позе и развороту оставлено ограничение по опоре.
+ let z=s.mode==="cmu"&&!s.anatomy?mocapPose(s.phase)[0]:1.34+.035*Math.cos(TAU*s.phase*2);
+ for(const l of legs)if(!l.swing&&(s.mode!=="cmu"||s.anatomy||s.reorient)){
+  const h=hip(l,0),d=Math.hypot(h.x-l.foot.x,h.y-l.foot.y);
+  const ankle=s.mode==="cmu"&&!s.anatomy ? .165 : .07;
+  const allowed=l.z+ankle+Math.sqrt(Math.max(0,(UPPER+LOWER-.025)**2-d*d));
+  z=Math.min(z,allowed);
+ }
+ return Math.max(.82,z);
+}
+function ik(l,z){
+ const H=hip(l,z),F={x:l.foot.x,y:l.foot.y,z:l.z+(s.mode==="cmu"&&!s.anatomy ? .165 : .07)};
+ const dx=F.x-H.x,dy=F.y-H.y,dz=F.z-H.z;
+ const D=Math.max(.001,Math.hypot(dx,dy,dz)),ux=dx/D,uy=dy/D,uz=dz/D;
+ const reach=Math.min(D,UPPER+LOWER-.0001);
+ const a=(UPPER*UPPER-LOWER*LOWER+reach*reach)/(2*reach);
+ const r=Math.sqrt(Math.max(0,UPPER*UPPER-a*a));
+ // Стабильная предпочтительная сторона колена, без зеркального скачка.
+ let bx=l.side*.35,by=s.turn,bz=.16;
+ if(s.mode==="cmu"&&!s.anatomy){
+  const q=mocapPose(s.phase),k=l.id==="Л"?7:10;
+  const co=clamp(s.turn,-1,1),si=Math.sqrt(Math.max(0,1-co*co));
+  bx=co*q[k]-si*q[k+1];by=si*q[k]+co*q[k+1];bz=q[k+2];
+ }
+ const dot=bx*ux+by*uy+bz*uz;
+ bx-=dot*ux;by-=dot*uy;bz-=dot*uz;
+ const bn=Math.max(.0001,Math.hypot(bx,by,bz));
+ const K={x:H.x+ux*a+bx/bn*r,y:H.y+uy*a+by/bn*r,z:H.z+uz*a+bz/bn*r};
+ const error=Math.max(Math.abs(vdist(H,K)-UPPER)/UPPER,Math.abs(vdist(K,F)-LOWER)/LOWER);
+ s.stretch=Math.max(s.stretch,error*100);
+ // Считаем рывок в локальных экранных координатах относительно groundAnchor,
+ // иначе перемещение камеры/изменение viewport даёт ложный POP.
+ const screen=P(K.x,K.y,K.z),anchor=P(s.x,s.y);
+ const local={x:screen.x-anchor.x,y:screen.y-anchor.y};
+ if(l.oldKnee){
+  const d=Math.hypot(local.x-l.oldKnee.x,local.y-l.oldKnee.y);
+  s.pop=Math.max(s.pop,d/Math.max(1/120,s.lastDt||1/60)/60);
+ }
+ l.oldKnee=local;
+ return {H,K,F};
+}
+function line(a,b,color,width){
+ ctx.strokeStyle=color;ctx.lineWidth=width;ctx.lineCap="round";
+ ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+}
+function dot(p,r,color){
+ ctx.fillStyle=color;ctx.beginPath();ctx.arc(p.x,p.y,r,0,TAU);ctx.fill();
+}
+function bone(a,b,color,width){
+ line(a,b,"#101b24",width+3);line(a,b,color,width);
+}
+// Стопа — один жёсткий элемент: подошва параллельна плоскости земли.
+// В конце опоры слегка поворачивается вокруг носка, без изменения длины.
+function footSole(l){
+ const fy=clamp(s.face,-1,1),fx=Math.sqrt(Math.max(0,1-fy*fy));
+ let pitch=0;
+ if(s.mode==="cmu"&&!s.anatomy&&!s.reorient){
+  if(l.swing){
+   const u=clamp((s.phase-MOCAP.starts[l.id])/(MOCAP.ends[l.id]-MOCAP.starts[l.id]),0,1);
+   pitch=.20*(1-smooth(clamp(u/.22,0,1)));
+  }else{
+   const stance=frac(s.phase-MOCAP.ends[l.id])/frac(MOCAP.starts[l.id]-MOCAP.ends[l.id]);
+   pitch=.20*smooth(clamp((stance-.82)/.18,0,1));
+  }
+  pitch*=clamp(Math.abs(s.vel)/.45,0,1);
+ }
+ const length=.38,soleZ=l.z+.035;
+ const toe={x:l.foot.x+fx*.26,y:l.foot.y+fy*.26,z:soleZ};
+ const heel={x:toe.x-fx*length*Math.cos(pitch),y:toe.y-fy*length*Math.cos(pitch),
+  z:soleZ+length*Math.sin(pitch)};
+ const mid={x:mix(heel.x,toe.x,.315),y:mix(heel.y,toe.y,.315),z:mix(heel.z,toe.z,.315)};
+ return {heel,toe,mid};
+}
+// Только графика: этот код читает готовые суставы, не меняя simulate/ik/footSole.
+const spriteNames=[
+ ["torso","Корпус + голова"],
+ ["rightUpperArm","Правая рука · плечо"],
+ ["rightForearm","Правая рука · предплечье"],
+ ["leftUpperArm","Левая рука · плечо"],
+ ["leftForearm","Левая рука · предплечье"],
+ ["rightThigh","Правая нога · бедро"],
+ ["rightShin","Правая нога · голень/сапог"],
+ ["leftThigh","Левая нога · бедро"],
+ ["leftShin","Левая нога · голень/сапог"]
+];
+const sheet={image:null,boxes:[],assigned:{},width:1};
+function artEnabled(){return !!(sheet.image&&sheet.boxes.length===9&&$("spriteMode").checked)}
+function setArtMessage(message){$("artMessage").textContent=message}
+function extractSheetPieces(image){
+ const c=document.createElement("canvas");
+ const scale=Math.min(1,700/Math.max(image.naturalWidth,image.naturalHeight));
+ c.width=Math.max(1,Math.round(image.naturalWidth*scale));
+ c.height=Math.max(1,Math.round(image.naturalHeight*scale));
+ const g=c.getContext("2d",{willReadFrequently:true});
+ g.clearRect(0,0,c.width,c.height);g.drawImage(image,0,0,c.width,c.height);
+ const pixels=g.getImageData(0,0,c.width,c.height).data;
+ const w=c.width,h=c.height,total=w*h,seen=new Uint8Array(total);
+ const stack=new Int32Array(total),components=[];
+ const threshold=35;
+ for(let pos=0;pos<total;pos++){
+  if(seen[pos])continue;
+  seen[pos]=1;
+  if(pixels[pos*4+3]<threshold)continue;
+  let count=0,minX=w,minY=h,maxX=0,maxY=0,top=0;
+  stack[top++]=pos;
+  while(top){
+   const at=stack[--top],y=Math.floor(at/w),x=at-y*w;
+   count++;minX=Math.min(minX,x);minY=Math.min(minY,y);
+   maxX=Math.max(maxX,x);maxY=Math.max(maxY,y);
+   for(let dy=-1;dy<=1;dy++){
+    const ny=y+dy;if(ny<0||ny>=h)continue;
+    for(let dx=-1;dx<=1;dx++){
+     const nx=x+dx;if(nx<0||nx>=w)continue;
+     const n=ny*w+nx;
+     if(!seen[n]){
+      seen[n]=1;
+      if(pixels[n*4+3]>=threshold)stack[top++]=n;
+     }
+    }
+   }
+  }
+  if(count>=Math.max(16,total*.00012)){
+   const left=Math.max(0,Math.floor(minX/scale)-3);
+   const topPx=Math.max(0,Math.floor(minY/scale)-3);
+   const right=Math.min(image.naturalWidth,Math.ceil((maxX+1)/scale)+3);
+   const bottom=Math.min(image.naturalHeight,Math.ceil((maxY+1)/scale)+3);
+   components.push({x:left,y:topPx,w:right-left,h:bottom-topPx,count});
+  }
+ }
+ // Отдельные заплатки и мелкие островки не должны вытеснять девять основных частей.
+ return components.sort((a,b)=>b.count-a.count).slice(0,9)
+   .sort((a,b)=>a.y-b.y||a.x-b.x);
+}
+function previewSheet(){
+ const target=$("artPreview"),mapping=$("artMapping");
+ target.replaceChildren();mapping.replaceChildren();
+ sheet.boxes.forEach((rect,i)=>{
+  const tile=document.createElement("div");tile.className="spriteTile";
+  const preview=document.createElement("canvas");preview.width=150;preview.height=98;
+  const g=preview.getContext("2d"),ratio=Math.min(142/rect.w,90/rect.h);
+  g.drawImage(sheet.image,rect.x,rect.y,rect.w,rect.h,
+   (150-rect.w*ratio)/2,(98-rect.h*ratio)/2,rect.w*ratio,rect.h*ratio);
+  const text=document.createElement("span");text.textContent="№ "+(i+1);
+  tile.append(preview,text);target.append(tile);
+ });
+ spriteNames.forEach(([id,label],index)=>{
+  const row=document.createElement("label"),caption=document.createElement("span");
+  caption.textContent=label;
+  const select=document.createElement("select");select.dataset.part=id;
+  sheet.boxes.forEach((rect,i)=>{
+   const option=document.createElement("option");option.value=String(i);
+   option.textContent="№ "+(i+1);select.append(option);
+  });
+  // Предустановка для листа 1536×1024; другие назначения можно изменить.
+  const expected={
+   torso:[255,500],rightUpperArm:[560,251],leftUpperArm:[823,255],
+   rightForearm:[550,705],leftForearm:[784,720],
+   rightThigh:[1110,260],leftThigh:[1380,260],
+   rightShin:[1055,710],leftShin:[1359,740]
+  };
+  const point=expected[id];
+  if(point){
+   let best=0,dMin=Infinity;
+   sheet.boxes.forEach((box,k)=>{
+    const dx=(box.x+box.w/2)-point[0],dy=(box.y+box.h/2)-point[1];
+    const d=dx*dx+dy*dy;
+    if(d<dMin){dMin=d;best=k}
+   });
+   select.value=String(best);
+  }
+  select.addEventListener("change",()=>{sheet.assigned[id]=Number(select.value);setArtMessage("Проверь визуально соответствие номеров суставам.")});
+  sheet.assigned[id]=Number(select.value);
+  row.append(caption,select);mapping.append(row);
+ });
+}
+function setSheetImage(image){
+ sheet.image=image;sheet.boxes=extractSheetPieces(image);
+ $("spriteMode").checked=false;
+ $("spriteMode").disabled=sheet.boxes.length!==9;
+ if(sheet.boxes.length!==9){
+  sheet.boxes=[];sheet.image=null;
+  $("artPreview").replaceChildren();$("artMapping").replaceChildren();
+  setArtMessage("Не найдены 9 отдельных непрозрачных областей. Нужен PNG с прозрачным фоном и непересекающимися деталями.");
+  return;
+ }
+ previewSheet();$("spriteMode").checked=true;
+ setArtMessage("Найдено 9 частей. Сверь номера и назначение справа; затем закрой панель для просмотра походки.");
+}
+$("sheetInput").addEventListener("change",event=>{
+ const file=event.target.files&&event.target.files[0];if(!file)return;
+ if(!["image/png","image/webp"].includes(file.type)){setArtMessage("Нужен прозрачный PNG или WebP.");return}
+ const url=URL.createObjectURL(file),image=new Image();
+ image.onload=()=>{URL.revokeObjectURL(url);setSheetImage(image)};
+ image.onerror=()=>{URL.revokeObjectURL(url);setArtMessage("Не удалось прочесть PNG.")};
+ image.src=url;
+});
+$("spriteWidth").addEventListener("input",event=>{
+ sheet.width=Number(event.target.value)/100;
+ $("widthValue").textContent=event.target.value+"%";
+});
+// Исходный арт смотрит вниз: верхняя точка — проксимальный сустав.
+// Скрытые 10–12% над и под суставом остаются для перекрытия.
+// Точки на самом рисунке, а не произвольные 10/88% высоты прямоугольника.
+// Пары: начало и конец кости; право/лево — по анатомии персонажа.
+const ART_ANCHORS=Object.freeze({
+ torso:[[.47,.18],[.51,.83]],
+ rightUpperArm:[[.79,.12],[.33,.84]],
+ leftUpperArm:[[.35,.12],[.69,.84]],
+ rightForearm:[[.689,.142],[.39,.64]],
+ leftForearm:[[.660,.112],[.52,.62]],
+ rightThigh:[[.52,.07],[.47,.83]],
+ leftThigh:[[.50,.06],[.47,.83]],
+ rightShin:[[.690,.096],[.597,.715]],
+ leftShin:[[.50,.15],[.52,.67]]
+});
+// Проймы торса на исходном спрайте (анатомические стороны, вид 3/4 SW).
+const TORSO_SHOULDERS=Object.freeze({
+ right:[.130,.386],left:[.958,.453]
+});
+// Графический риг: постоянный размер деталей при повороте в глубину.
+// Физика IK остаётся прежней; только экранные суставы спрайтов
+// пересчитываются двухкостным 2D IK с неизменными длинами.
+const ART_LENGTH=Object.freeze({
+ torso:BONES.headOffset*CAM.h,
+ rightUpperArm:BONES.upperArm*CAM.h,leftUpperArm:BONES.upperArm*CAM.h,
+ rightForearm:BONES.forearm*CAM.h,leftForearm:BONES.forearm*CAM.h,
+ rightThigh:BONES.thigh*CAM.h,leftThigh:BONES.thigh*CAM.h,
+ rightShin:BONES.shin*CAM.h,leftShin:BONES.shin*CAM.h
+});
+// Все исходные суставы используются напрямую; второй визуальный IK удалён.
+// Неизменна поперечная толщина. Продольная проекция одежды сжимается по кости.
+// Кисти и сапоги ниже запястья/лодыжки рисуются в постоянном масштабе.
+function spriteHalfClip(x,y,ux,uy,after){
+ const m=4096,px=-uy,py=ux,sign=after?1:-1;
+ ctx.beginPath();
+ ctx.moveTo(x+px*m,y+py*m);
+ ctx.lineTo(x-px*m,y-py*m);
+ ctx.lineTo(x-px*m+ux*m*sign,y-py*m+uy*m*sign);
+ ctx.lineTo(x+px*m+ux*m*sign,y+py*m+uy*m*sign);
+ ctx.closePath();
+ ctx.clip();
+}
+// Проецируем произвольную метку арт-детали тем же преобразованием, что и спрайт.
+function spriteMappedAnchor(part,start,end,mark){
+ const box=sheet.boxes[sheet.assigned[part]];
+ if(!box||!sheet.image)return null;
+ const anchors=ART_ANCHORS[part];
+ const ax=anchors[0][0]*box.w,ay=anchors[0][1]*box.h;
+ const vx=(anchors[1][0]-anchors[0][0])*box.w;
+ const vy=(anchors[1][1]-anchors[0][1])*box.h;
+ const srcLen=Math.hypot(vx,vy),dx=end.x-start.x,dy=end.y-start.y;
+ const dstLen=Math.hypot(dx,dy);
+ if(srcLen<1||dstLen<.01)return null;
+ const px=mark[0]*box.w-ax,py=mark[1]*box.h-ay;
+ const longitudinal=(px*vx+py*vy)/(srcLen*srcLen)*dstLen;
+ const transverse=(-px*vy+py*vx)/(srcLen*srcLen)*ART_LENGTH[part]*sheet.width;
+ return {x:start.x+(dx*longitudinal-dy*transverse)/dstLen,
+  y:start.y+(dy*longitudinal+dx*transverse)/dstLen};
+}
+function torsoShoulderPoint(l,z){
+ const sway=pelvisSway();
+ const head=P(s.x+sway*.18,s.y,z+BONES.headOffset);
+ const pelvis=P(s.x+sway,s.y,z);
+ // При развороте плечевые точки меняются плавно: обе руки не перескакивают.
+ const u=clamp((s.turn*l.side+1)*.5,0,1);
+ const mark=[mix(TORSO_SHOULDERS.left[0],TORSO_SHOULDERS.right[0],u),
+  mix(TORSO_SHOULDERS.left[1],TORSO_SHOULDERS.right[1],u)];
+ return spriteMappedAnchor("torso",head,pelvis,mark);
+}
+function drawSpriteBetween(part,start,end){
+ const index=sheet.assigned[part],box=sheet.boxes[index];
+ if(!box||!sheet.image)return;
+ const anchors=ART_ANCHORS[part]||[[.5,.10],[.5,.88]];
+ const ax=anchors[0][0]*box.w,ay=anchors[0][1]*box.h;
+ const bx=anchors[1][0]*box.w,by=anchors[1][1]*box.h;
+ const vx=bx-ax,vy=by-ay,srcLen=Math.hypot(vx,vy);
+ const dx=end.x-start.x,dy=end.y-start.y,dstLen=Math.hypot(dx,dy);
+ if(srcLen<1||dstLen<.01)return;
+ const ux=vx/srcLen,uy=vy/srcLen;
+ const srcAngle=Math.atan2(vy,vx),dstAngle=Math.atan2(dy,dx);
+ const along=dstLen/srcLen;
+ const across=ART_LENGTH[part]/srcLen*sheet.width;
+ const split=part.endsWith("Forearm")||part.endsWith("Shin");
+ // Основной сегмент: оба суставных якоря совпадают с базовым ригом.
+ ctx.save();
+ ctx.translate(start.x,start.y);
+ ctx.rotate(dstAngle);
+ ctx.scale(along,across);
+ ctx.rotate(-srcAngle);
+ ctx.translate(-ax,-ay);
+ if(split)spriteHalfClip(bx,by,ux,uy,false);
+ ctx.drawImage(sheet.image,box.x,box.y,box.w,box.h,0,0,box.w,box.h);
+ ctx.restore();
+ if(split){
+  // Кисть или сапог — жёсткий фрагмент: масштаб больше не меняется от ракурса.
+  const fixed=ART_LENGTH[part]/srcLen;
+  ctx.save();
+  ctx.translate(end.x,end.y);
+  ctx.rotate(dstAngle);
+  ctx.scale(fixed,fixed*sheet.width);
+  ctx.rotate(-srcAngle);
+  ctx.translate(-bx,-by);
+  spriteHalfClip(bx,by,ux,uy,true);
+  ctx.drawImage(sheet.image,box.x,box.y,box.w,box.h,0,0,box.w,box.h);
+  ctx.restore();
+ }
+}
+
+ // Лист хранится рядом с тестом; ручной импорт остаётся запасным.
+ const defaultSheet=new Image();
+ defaultSheet.onload=()=>{setSheetImage(defaultSheet);if(sheet.boxes.length===9)setArtMessage("Атлас манекена: 9 фрагментов. Сверь назначение, затем проверь Т-позу и походку.")};
+ defaultSheet.onerror=()=>setArtMessage("Атлас манекена не загрузился — выбери PNG вручную.");
+ defaultSheet.src=window.MANNEQUIN_SHEET_DATA||"./character-sheet.webp";
+
+function segment(l,z){
+ const q=ik(l,z),A=P(q.H.x,q.H.y,q.H.z),K=P(q.K.x,q.K.y,q.K.z),F=P(q.F.x,q.F.y,q.F.z);
+ const far=(s.turn*l.side)>0;
+ ctx.globalAlpha=far?.66:1;
+ if(artEnabled()){
+  const side=l.id==="П"?"right":"left";
+  if(l.id==="Л"){
+   drawSpriteBetween(side+"Shin",K,F);
+   drawSpriteBetween(side+"Thigh",A,K);
+  }else{
+   drawSpriteBetween(side+"Thigh",A,K);
+   drawSpriteBetween(side+"Shin",K,F);
+  }
+ }else{
+  bone(A,K,l.color,12);bone(K,F,l.color,10);
+  dot(K,7,l.color);dot(A,6,l.color);
+ }
+ const sole=footSole(l),heel=P(sole.heel.x,sole.heel.y,sole.heel.z),
+  toe=P(sole.toe.x,sole.toe.y,sole.toe.z),mid=P(sole.mid.x,sole.mid.y,sole.mid.z);
+ if(!artEnabled()){bone(F,mid,l.color,7);bone(heel,toe,l.color,9)}
+ ctx.globalAlpha=1;
+ if($("rig").checked){
+  line(A,K,"#eefaff",1.25);line(K,F,"#eefaff",1.25);
+  dot(K,2,"#17212c");dot(F,3,"#f5fbff");
+ }
+ ctx.font="bold 12px system-ui";ctx.textAlign="left";ctx.fillStyle=l.color;
+ ctx.fillText(l.id,F.x+9,F.y-7);
+}
+function arm(l,z){
+ const Sh={x:s.x+pelvisSway()*.28-s.turn*l.side*widthPreset().shoulder,y:s.y,z:z+BONES.torso};
+ let E,Hand;
+ if(s.anatomy){
+  // Т-поза: обе руки симметричны и имеют постоянные длины в мире.
+  const outward=-s.turn*l.side;
+  E={x:Sh.x+outward*BONES.upperArm,y:Sh.y,z:Sh.z};
+  Hand={x:E.x+outward*BONES.forearm,y:E.y,z:E.z};
+ }else if(s.mode==="cmu"){
+  // Перенос вращений плеча и локтя из CMU с сохранением длины наших костей.
+  const p=mocapPose(s.phase),i=l.id==="Л"?13:19;
+  const dir=(j)=>{
+   const co=clamp(s.turn,-1,1),si=Math.sqrt(Math.max(0,1-co*co));
+   const x=co*p[j]-si*p[j+1],y=si*p[j]+co*p[j+1],z=p[j+2];
+   const n=Math.max(.0001,Math.hypot(x,y,z));
+   return {x:x/n,y:y/n,z:z/n};
+  };
+  const u=dir(i),v=dir(i+3);
+  E={x:Sh.x+u.x*BONES.upperArm,y:Sh.y+u.y*BONES.upperArm,z:Sh.z+u.z*BONES.upperArm};
+  Hand={x:E.x+v.x*BONES.forearm,y:E.y+v.y*BONES.forearm,z:E.z+v.z*BONES.forearm};
+ }else{
+  // Мах противоположен шагу одноимённой ноги.
+  const wave=Math.sin(TAU*(s.phase+l.off+.5))*(Math.abs(s.vel)>.03?1:0);
+  const upperAngle=wave*.30,foreAngle=.18+wave*.25;
+  E={x:Sh.x,y:Sh.y+s.face*Math.sin(upperAngle)*BONES.upperArm,
+    z:Sh.z-Math.cos(upperAngle)*BONES.upperArm};
+  Hand={x:E.x,y:E.y+s.face*Math.sin(foreAngle)*BONES.forearm,
+    z:E.z-Math.cos(foreAngle)*BONES.forearm};
+ }
+ // Контролируем не только ноги: обе кости руки сохраняют длину.
+ const armError=Math.max(
+  Math.abs(vdist(Sh,E)-BONES.upperArm)/BONES.upperArm,
+  Math.abs(vdist(E,Hand)-BONES.forearm)/BONES.forearm
+ );
+ s.stretch=Math.max(s.stretch,armError*100);
+ let a=P(Sh.x,Sh.y,Sh.z),b=P(E.x,E.y,E.z),d=P(Hand.x,Hand.y,Hand.z);
+ if(artEnabled()){
+  const shoulderArt=torsoShoulderPoint(l,z);
+  if(shoulderArt){
+   // Сдвигаем графику руки целиком без изменения её длины или мировой кинематики.
+   const armGraphicOffset={x:shoulderArt.x-a.x,y:shoulderArt.y-a.y};
+   a=shoulderArt;
+   b={x:b.x+armGraphicOffset.x,y:b.y+armGraphicOffset.y};
+   d={x:d.x+armGraphicOffset.x,y:d.y+armGraphicOffset.y};
+  }
+ }
+ const far=(s.turn*l.side)>0;
+ ctx.globalAlpha=far?.65:1;
+ if(artEnabled()){
+  const side=l.id==="П"?"right":"left";
+  drawSpriteBetween(side+"UpperArm",a,b);
+  drawSpriteBetween(side+"Forearm",b,d);
+ }else{
+  bone(a,b,l.color,9);bone(b,d,l.color,8);dot(b,5,l.color);dot(d,5,l.color);
+ }
+ ctx.globalAlpha=1;
+ if($("rig").checked){
+  line(a,b,"#f4fbff",1);line(b,d,"#f4fbff",1);
+  dot(b,2,"#142331");
+ }
+ if(s.anatomy){
+  ctx.font="bold 11px system-ui";ctx.textAlign="center";ctx.fillStyle=l.color;
+  ctx.fillText(l.id,d.x,d.y-12);
+ }
+}
+function drawGrid(){
+ ctx.fillStyle="#132833";ctx.fillRect(0,0,W,H);
+ const X=Math.floor(s.x),Y=Math.floor(s.y);
+ for(let i=-14;i<=14;i++){
+  const xx=X+i,yy=Y+i;
+  const a=P(xx,Y-14),b=P(xx,Y+14),c=P(X-14,yy),d=P(X+14,yy);
+  line(a,b,i===0?"#496a72":"#244551",i===0?1.3:.75);
+  line(c,d,i===0?"#496a72":"#244551",i===0?1.3:.75);
+ }
+}
+function groundMarks(){
+ const anchor=P(s.x,s.y);
+ ctx.fillStyle="#09151b88";ctx.beginPath();
+ ctx.ellipse(anchor.x,anchor.y+2,33,12,0,0,TAU);ctx.fill();
+ line({x:anchor.x-7,y:anchor.y},{x:anchor.x+7,y:anchor.y},"#76e8aa",2);
+ line({x:anchor.x,y:anchor.y-7},{x:anchor.x,y:anchor.y+7},"#76e8aa",2);
+ for(const l of legs){
+  const g=P(l.foot.x,l.foot.y);
+  ctx.strokeStyle=l.color;ctx.lineWidth=1.8;
+  ctx.setLineDash(l.swing?[3,3]:[]);
+  ctx.beginPath();ctx.ellipse(g.x,g.y,10,4,0,0,TAU);ctx.stroke();
+  ctx.setLineDash([]);
+  if(l.swing){
+   const a=P(l.from.x,l.from.y),b=P(l.to.x,l.to.y);
+   ctx.strokeStyle=l.color+"99";ctx.setLineDash([3,4]);ctx.beginPath();
+   ctx.moveTo(a.x,a.y);ctx.quadraticCurveTo((a.x+b.x)/2,(a.y+b.y)/2-20,b.x,b.y);
+   ctx.stroke();ctx.setLineDash([]);dot(b,3,l.color);
+  }else dot(g,3,l.color);
+ }
+}
+function torso(z){
+ const sway=pelvisSway(),waistX=s.x+sway,shoulderX=s.x+sway*.28;
+ const w=widthPreset();
+ const left=P(waistX-s.turn*w.waist,s.y,z),right=P(waistX+s.turn*w.waist,s.y,z);
+ const shL=P(shoulderX-s.turn*w.shoulder,s.y,z+BONES.torso),shR=P(shoulderX+s.turn*w.shoulder,s.y,z+BONES.torso);
+ const pelvis=P(waistX,s.y,z);
+ const head=P(s.x+sway*.18,s.y,z+BONES.headOffset);
+ if(artEnabled()){
+  drawSpriteBetween("torso",head,pelvis);
+ }else{
+  ctx.fillStyle="#325b75";ctx.strokeStyle="#0d1c29";ctx.lineWidth=4;
+  ctx.beginPath();ctx.moveTo(left.x,left.y);ctx.lineTo(shL.x,shL.y);
+  ctx.lineTo(shR.x,shR.y);ctx.lineTo(right.x,right.y);ctx.closePath();ctx.fill();ctx.stroke();
+  dot(pelvis,10,"#3b7087");
+  dot(head,16,"#10212b");dot(head,14,"#e9bc93");
+  dot({x:head.x-s.turn*9,y:head.y+s.turn*4.5},2.5,"#6e443d");
+  ctx.strokeStyle="#263a43";ctx.lineWidth=5;ctx.beginPath();
+  ctx.arc(head.x,head.y,14,Math.PI*1.08,Math.PI*1.96);ctx.stroke();
+ }
+ if($("rig").checked){
+  line(pelvis,P(shoulderX,s.y,z+BONES.torso),"#eaf7ff",1);dot(pelvis,3,"#9beac8");
+ }
+}
+function paint(){
+ W=canvas.clientWidth;H=canvas.clientHeight;if(!W||!H)return;
+ const dpr=Math.min(2,window.devicePixelRatio||1);
+ const pw=Math.round(W*dpr),ph=Math.round(H*dpr);
+ if(canvas.width!==pw||canvas.height!==ph){canvas.width=pw;canvas.height=ph}
+ ctx.setTransform(dpr,0,0,dpr,0,0);
+ ox=W*.50-CAM.ux*s.x-CAM.vx*s.y;
+ oy=H*.78-CAM.uy*s.x-CAM.vy*s.y;
+ drawGrid();groundMarks();
+ const z=pelvisZ();
+ const order=legs.slice().sort((a,b)=>P(hip(a,0).x,hip(a,0).y).y-P(hip(b,0).x,hip(b,0).y).y);
+ segment(order[0],z);arm(order[0],z);
+ // Левая нога всегда позади корпуса: голень → бедро → торс.
+ if(order[1].id==="Л")segment(order[1],z);
+ torso(z);
+ if(order[1].id!=="Л")segment(order[1],z);
+ arm(order[1],z);
+ ctx.textAlign="left";ctx.font="11px system-ui";ctx.fillStyle="#bed5e0";
+ ctx.fillText("X ↘ 36/18   Y ↙ −36/18",10,H-26);
+ ctx.fillText("Мир: x "+s.x.toFixed(2)+"  y "+s.y.toFixed(2)+" | "+
+  (s.dir===1?"SW":s.dir===-1?"NE":"СТОП"),10,H-10);
+ const la=s.anatomy?"Т-поза · симметрия":legs.map(l=>l.id+": "+(l.swing?"перенос":"опора")).join("  •  ");
+ ctx.textAlign="right";ctx.fillStyle="#edf6ff";ctx.fillText(la,W-8,16);
+}
+function metric(id,value,bad){$(id).textContent=value;$(id).className=bad?"warn":"ok"}
+function updateHUD(){
+ metric("slide",s.slide.toFixed(3),s.slide>.002);
+ metric("limp",s.limp===null?"—":s.limp.toFixed(1)+"%",s.limp!==null&&s.limp>8);
+ metric("stretch",s.stretch.toFixed(1)+"%",s.stretch>1);
+ metric("pop",s.pop.toFixed(1)+" px",s.pop>8);
+}
+function tick(ms){
+ const dt=prevStamp?Math.min(.033,(ms-prevStamp)/1000):1/60;prevStamp=ms;
+ if(!s.paused){s.lastDt=dt;simulate(dt)}
+ paint();
+ hudWait+=dt;if(hudWait>.12){updateHUD();hudWait=0}
+ requestAnimationFrame(tick);
+}
+// Встроенные регрессионные проверки: открой ?qa=1 на опубликованном полигоне.
+// Запускаются только по запросу и не меняют обычный игровой цикл.
+function runRegressions(){
+ const originalMode=s.mode,originalSpeed=s.speed,originalWidth=widthKey;
+ const results=[],step=(n)=>{for(let k=0;k<n;k++){s.lastDt=1/60;simulate(1/60);paint()}};
+ // При смене ширины суставы таза двигаются вместе с поясом, независимо от ракурса.
+ let hipsOK=true;
+ for(const [preset,expected] of [["orig",.32],["mid",.40],["wide",.48]]){
+  widthKey=preset;
+  const span=Math.abs(hip({side:-1},0).x-hip({side:1},0).x);
+  hipsOK=hipsOK&&Math.abs(span-expected)<.00001;
+ }
+ widthKey=originalWidth;
+ results.push({test:"ширина таза: 3 пропорции",ok:hipsOK});
+ s.mode="cmu";s.speed=1;init();drive(1);
+ let maxHeightError=0,maxHeightJump=0,previousHeight=null;
+ for(let k=0;k<150;k++){
+  s.lastDt=1/60;simulate(1/60);
+  const current=pelvisZ();
+  maxHeightError=Math.max(maxHeightError,Math.abs(current-mocapPose(s.phase)[0]));
+  if(previousHeight!==null)maxHeightJump=Math.max(maxHeightJump,Math.abs(current-previousHeight));
+  previousHeight=current;paint();
+ }
+ results.push({test:"CMU: таз без рывка",ok:maxHeightError<.015&&maxHeightJump<.023});
+ s.phase=.25;const stanceRight=hip(legs[0],0).x-s.x;
+ s.phase=.75;const stanceLeft=hip(legs[0],0).x-s.x;
+ results.push({test:"CMU: перенос веса",ok:stanceLeft-stanceRight>.07});
+ s.phase=.70;s.vel=2;const support=legs[1];support.swing=false;support.z=0;
+ const flatFoot=footSole(support);
+ const soleLength=(q)=>Math.hypot(q.heel.x-q.toe.x,q.heel.y-q.toe.y,q.heel.z-q.toe.z);
+ s.phase=.99;const pushedFoot=footSole(support);
+ results.push({test:"стопа: плоская опора и перекат",ok:
+  Math.abs(flatFoot.heel.z-flatFoot.toe.z)<.002 &&
+  pushedFoot.heel.z-pushedFoot.toe.z>.04 &&
+  Math.abs(soleLength(flatFoot)-soleLength(pushedFoot))<.001});
+
+ for(const dir of [1,-1]){
+  s.mode="cmu";s.speed=1;init();drive(dir);step(51);drive(-dir);step(180);
+  results.push({test:"разворот "+(dir===1?"SW→NE":"NE→SW"),
+   ok:s.slide<.003&&s.stretch<1&&s.pop<8&&s.dir===-dir});
+ }
+ s.mode="cmu";s.speed=1;init();drive(1);
+ const max={Л:0,П:0};
+ for(let k=0;k<240;k++){
+  const old=legs.map(l=>({swing:l.swing,foot:{...l.foot}}));
+  step(1);
+  legs.forEach((l,i)=>{if(old[i].swing&&!l.swing){
+   max[l.id]=Math.max(max[l.id],dist(old[i].foot,l.foot));
+  }});
+ }
+ results.push({test:"касания стоп",ok:max.Л<.08&&max.П<.08});
+ s.mode="classic";s.speed=1;init();drive(1);step(120);
+ results.push({test:"старый режим",ok:s.stretch<1});
+ for(const dir of [1,-1]){
+  s.mode="cmu";s.speed=1;init();drive(dir);step(60*20);
+  const aligned=legs.every(l=>Math.abs(l.foot.x-s.x)<.30);
+  results.push({test:"20 с / без бокового дрейфа "+(dir===1?"SW":"NE"),
+   ok:aligned&&s.stretch<1});
+ }
+ s.mode=originalMode;s.speed=originalSpeed;widthKey=originalWidth;init();
+ return results;
+}
+init();
+if(window.location&&/(?:\\?|&)qa=1(?:&|$)/.test(window.location.search)){
+ const results=runRegressions(),passed=results.filter(r=>r.ok).length;
+ $("note").textContent="QA "+passed+"/"+results.length+": "+
+  results.map(r=>(r.ok?"✓":"✗")+r.test).join(" · ");
+}
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>
