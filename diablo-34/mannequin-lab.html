@@ -559,9 +559,9 @@ function previewSheet(){
   // Атлас манекена 1024×1536: фиксированный анатомический набор.
   // Номера берутся из девяти прозрачных компонентов, отсортированных по Y/X.
   const mannequinMap={
-   torso:0,rightUpperArm:5,rightForearm:3,
-   leftUpperArm:2,leftForearm:1,
-   rightThigh:8,rightShin:7,leftThigh:4,leftShin:6
+   torso:0,rightUpperArm:2,rightForearm:1,
+   leftUpperArm:5,leftForearm:3,
+   rightThigh:4,rightShin:6,leftThigh:8,leftShin:7
   };
   if(sheet.image.naturalWidth===1024&&sheet.image.naturalHeight===1536){
    select.value=String(mannequinMap[id]);
@@ -621,19 +621,19 @@ $("spriteWidth").addEventListener("input",event=>{
 // Пары: начало и конец кости; право/лево — по анатомии персонажа.
 const ART_ANCHORS=Object.freeze({
  // Пары шарниров по самим спрайтам: крупная точка ближе к торсу.
- torso:[[.49,.21],[.54,.82]],
- rightUpperArm:[[.30,.12],[.83,.89]],
- leftUpperArm:[[.71,.12],[.22,.89]],
- rightForearm:[[.72,.08],[.37,.63]],
- leftForearm:[[.78,.08],[.43,.66]],
- rightThigh:[[.29,.10],[.72,.88]],
- leftThigh:[[.52,.10],[.44,.87]],
- rightShin:[[.48,.06],[.50,.75]],
- leftShin:[[.52,.07],[.49,.73]]
+ torso:[[.39,.20],[.42,.88]],
+ rightUpperArm:[[.71,.12],[.22,.89]],
+ leftUpperArm:[[.30,.12],[.83,.89]],
+ rightForearm:[[.78,.08],[.43,.66]],
+ leftForearm:[[.72,.08],[.37,.63]],
+ rightThigh:[[.52,.10],[.44,.87]],
+ leftThigh:[[.29,.10],[.72,.88]],
+ rightShin:[[.52,.07],[.49,.73]],
+ leftShin:[[.48,.06],[.50,.75]]
 });
 // Проймы торса на исходном спрайте (анатомические стороны, вид 3/4 SW).
 const TORSO_SHOULDERS=Object.freeze({
- right:[.130,.386],left:[.958,.453]
+ right:[.145,.38],left:[.875,.42]
 });
 // Графический риг: постоянный размер деталей при повороте в глубину.
 // Физика IK остаётся прежней; только экранные суставы спрайтов
