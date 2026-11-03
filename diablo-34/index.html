@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Diablo 3/4 — лаборатория походки</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden}
+body{height:100dvh;display:flex;flex-direction:column;background:#101923;color:#e9f2fa;font:14px system-ui,Arial}
+header{padding:9px 12px 5px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+header b{font-size:15px}header small{font-size:11px;color:#a8bccd}
+#stage{position:relative;flex:1;min-height:170px;overflow:hidden}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+#legend{position:absolute;top:7px;left:9px;padding:5px 8px;border-radius:7px;background:#142432df;font-size:11px;line-height:1.45;pointer-events:none}
+#legend em{color:#5ed8ff;font-style:normal}#legend strong{color:#ffb66d}
+#controls{flex:none;padding:7px 9px max(9px,env(safe-area-inset-bottom));background:#192734;border-top:1px solid #344657;max-height:49dvh;overflow:auto}
+.buttons{display:flex;gap:6px;margin-bottom:6px}
+button{flex:1;min-width:0;border:1px solid #506477;background:#293e50;color:#fff;border-radius:9px;min-height:42px;font:600 13px system-ui}
+button.active{background:#216e80;border-color:#53d1df}button:active{filter:brightness(1.3)}
+#options{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:2px 2px 7px}
+#speedLabel{display:flex;gap:7px;align-items:center;flex:1;min-width:0;white-space:nowrap;font-size:12px}
+#speed{width:100%;min-width:40px;accent-color:#54d9ed}#rigLabel{white-space:nowrap;font-size:12px}
+input[type=checkbox]{accent-color:#54d9ed}
+#meters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+.meter{border-radius:7px;background:#0f1d28;text-align:center;padding:6px 2px;min-width:0}
+.meter span{display:block;font-size:9px;letter-spacing:.1px;color:#abc1d0}
+.meter b{display:block;font-size:12px;margin-top:2px;white-space:nowrap}
+.ok{color:#70e5a2}.warn{color:#ffb36b}
+#note{color:#a2b4c3;font-size:10px;margin-top:6px;line-height:1.3}
+</style>
+</head>
+<body>
+<header><b>Ходьба 3/4 · полигон</b><small>v0.1 · SW ⇄ NE</small></header>
+<div id="stage">
+<canvas id="view"></canvas>
+<div id="legend"><em>Л — левая</em> · <strong>П — правая</strong><br>зелёный + — опора тела<br>кольцо — зафиксированная стопа</div>
+</div>
+<div id="controls">
+<div class="buttons">
+<button id="sw">↙ SW идти</button><button id="ne">↗ NE идти</button><button id="stop">■ Стоп</button>
+</div>
+<div class="buttons">
+<button id="pause">⏸ Пауза</button><button id="frame">+1 кадр</button><button id="reset">↺ Сброс</button>
+</div>
+<div id="options">
+<label id="speedLabel">Скорость <output id="speedValue">1.0</output><input id="speed" type="range" min="0.6" max="1.5" step="0.1" value="1.0"></label>
+<label id="rigLabel"><input id="rig" type="checkbox" checked> Кости и IK</label>
+</div>
+<div id="meters">
+<div class="meter"><span>FOOT SLIDE</span><b class="ok" id="slide">0.000</b></div>
+<div class="meter"><span>LIMP</span><b id="limp">—</b></div>
+<div class="meter"><span>STRETCH</span><b class="ok" id="stretch">0.0%</b></div>
+<div class="meter"><span>POP / 60 fps</span><b class="ok" id="pop">0.0 px</b></div>
+</div>
+<div id="note">SLIDE/STRETCH/POP — максимумы с момента сброса. LIMP — асимметрия последнего цикла.</div>
+</div>
+<script>
+"use strict";
+// Камера: аксонометрия 2:1; ось X ↘, ось Y ↙, высота вычитается из экранного Y.
+// Мировая точка опоры отдельно от тела; два ракурса, процедурный риг.
+const canvas=document.getElementById("view"),ctx=canvas.getContext("2d");
+const $=id=>document.getElementById(id);
+const TAU=Math.PI*2,STANCE=.64,UPPER=.80,LOWER=.80;
+const CAM={ux:36,uy:18,vx:-36,vy:18,h:72};
+const legs=[{id:"Л",side:1,off:0,color:"#59d9ff"},{id:"П",side:-1,off:.5,color:"#ffad64"}];
+const s={x:0,y:0,phase:0,dir:0,face:1,turn:1,vel:0,speed:1,paused:false,slide:0,pop:0,stretch:0,limp:null};
+let W=1,H=1,ox=0,oy=0,prevStamp=0,hudWait=0;
+function frac(n){return ((n%1)+1)%1}
+function clamp(n,a,b){return Math.max(a,Math.min(b,n))}
+function mix(a,b,t){return a+(b-a)*t}
+function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
+function vdist(a,b){return Math.hypot(a.x-b.x,a.y-b.y,a.z-b.z)}
+function P(x,y,z=0){return {x:ox+CAM.ux*x+CAM.vx*y,y:oy+CAM.uy*x+CAM.vy*y-z*CAM.h}}
+function hip(l,z){return {x:s.x-s.turn*l.side*.16,y:s.y,z}}
+function refreshButtons(){
+ $("sw").classList.toggle("active",s.dir===1);
+ $("ne").classList.toggle("active",s.dir===-1);
+ $("stop").classList.toggle("active",s.dir===0);
+ $("pause").textContent=s.paused?"▶ Продолжить":"⏸ Пауза";
+}
+function init(){
+ s.x=s.y=s.phase=s.vel=s.slide=s.pop=s.stretch=0;
+ s.dir=0;s.face=1;s.turn=1;s.paused=false;s.limp=null;s.lastDt=1/60;
+ for(const l of legs){
+  l.foot={x:-l.side*.22,y:0};l.from={...l.foot};l.to={...l.foot};
+  l.z=0;l.swing=false;l.last={...l.foot};l.stanceTime=0;
+  l.stanceSample=null;l.strideSample=null;l.lastLanding=null;l.oldKnee=null;
+ }
+ refreshButtons();updateHUD();
+}
+function drive(dir){s.dir=dir;s.face=dir;s.paused=false;refreshButtons()}
+function stop(){s.dir=0;s.paused=false;refreshButtons()}
+$("sw").onclick=()=>drive(1);
+$("ne").onclick=()=>drive(-1);
+$("stop").onclick=stop;
+$("pause").onclick=()=>{s.paused=!s.paused;refreshButtons()};
+$("frame").onclick=()=>{s.paused=true;s.lastDt=1/60;simulate(1/60);refreshButtons();paint();updateHUD()};
+$("reset").onclick=init;
+$("speed").oninput=e=>{s.speed=+e.target.value;$("speedValue").textContent=s.speed.toFixed(1)};
+
+function startSwing(l,cadence){
+ l.swing=true;l.stanceSample=l.stanceTime;l.stanceTime=0;
+ l.from={...l.foot};
+ const lead=Math.max(.28,Math.abs(s.vel)/cadence*.50);
+ l.to={x:s.x-s.face*l.side*.22,y:s.y+s.face*lead};
+}
+function land(l){
+ l.swing=false;l.foot={...l.to};l.z=0;
+ if(l.lastLanding)l.strideSample=dist(l.foot,l.lastLanding);
+ l.lastLanding={...l.foot};l.last={...l.foot};
+}
+function simulate(dt){
+ dt=clamp(dt,0,1/30);
+ s.vel=mix(s.vel,s.dir*s.speed,Math.min(1,dt*6));
+ if(s.dir===0&&Math.abs(s.vel)<.003)s.vel=0;
+ s.turn=mix(s.turn,s.face,Math.min(1,dt*5));
+ s.y+=s.vel*dt;
+ const active=s.dir!==0||s.vel!==0||legs.some(l=>l.swing);
+ if(active){
+  const cadence=Math.max(1.06,Math.abs(s.vel)*1.10);
+  const old=s.phase;s.phase=frac(s.phase+dt*cadence);
+  for(const l of legs){
+   const before=frac(old+l.off),after=frac(s.phase+l.off),wasSwing=l.swing;
+   if(l.swing){
+    if(after<before){land(l)}
+    else{
+     const u=clamp((after-STANCE)/(1-STANCE),0,1),e=u*u*(3-2*u);
+     l.foot={x:mix(l.from.x,l.to.x,e),y:mix(l.from.y,l.to.y,e)};
+     l.z=.27*Math.sin(Math.PI*u);
+    }
+   }else if(s.dir!==0&&before<STANCE&&after>=STANCE){
+    startSwing(l,cadence);
+   }
+   if(!l.swing){
+    if(!wasSwing){
+     s.slide=Math.max(s.slide,dist(l.foot,l.last));
+     if(s.dir!==0)l.stanceTime+=dt;
+    }
+    l.last={...l.foot};
+   }
+  }
+ }
+ const a=legs[0],b=legs[1];
+ if(a.stanceSample!==null&&b.stanceSample!==null){
+  const timeDiff=Math.abs(a.stanceSample-b.stanceSample)/
+   Math.max(.01,(a.stanceSample+b.stanceSample)/2);
+  const stepDiff=a.strideSample!==null&&b.strideSample!==null?
+   Math.abs(a.strideSample-b.strideSample)/
+   Math.max(.01,(a.strideSample+b.strideSample)/2):0;
+  s.limp=Math.max(timeDiff,stepDiff)*100;
+ }
+}
+function pelvisZ(){
+ let z=1.34+.035*Math.cos(TAU*s.phase*2);
+ for(const l of legs)if(!l.swing){
+  const h=hip(l,0),d=Math.hypot(h.x-l.foot.x,h.y-l.foot.y);
+  const allowed=l.z+Math.sqrt(Math.max(0,(UPPER+LOWER-.025)**2-d*d));
+  z=Math.min(z,allowed);
+ }
+ return Math.max(.82,z);
+}
+function ik(l,z){
+ const H=hip(l,z),F={x:l.foot.x,y:l.foot.y,z:l.z+.07};
+ const dx=F.x-H.x,dy=F.y-H.y,dz=F.z-H.z;
+ const D=Math.max(.001,Math.hypot(dx,dy,dz)),ux=dx/D,uy=dy/D,uz=dz/D;
+ const reach=Math.min(D,UPPER+LOWER-.0001);
+ const a=(UPPER*UPPER-LOWER*LOWER+reach*reach)/(2*reach);
+ const r=Math.sqrt(Math.max(0,UPPER*UPPER-a*a));
+ // Стабильная предпочтительная сторона колена, без зеркального скачка.
+ let bx=l.side*.35,by=s.turn,bz=.16;
+ const dot=bx*ux+by*uy+bz*uz;
+ bx-=dot*ux;by-=dot*uy;bz-=dot*uz;
+ const bn=Math.max(.0001,Math.hypot(bx,by,bz));
+ const K={x:H.x+ux*a+bx/bn*r,y:H.y+uy*a+by/bn*r,z:H.z+uz*a+bz/bn*r};
+ const error=Math.max(Math.abs(vdist(H,K)-UPPER)/UPPER,Math.abs(vdist(K,F)-LOWER)/LOWER);
+ s.stretch=Math.max(s.stretch,error*100);
+ const screen=P(K.x,K.y,K.z);
+ if(l.oldKnee){
+  const d=Math.hypot(screen.x-l.oldKnee.x,screen.y-l.oldKnee.y);
+  s.pop=Math.max(s.pop,d/Math.max(1/120,s.lastDt||1/60)/60);
+ }
+ l.oldKnee=screen;
+ return {H,K,F};
+}
+function line(a,b,color,width){
+ ctx.strokeStyle=color;ctx.lineWidth=width;ctx.lineCap="round";
+ ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+}
+function dot(p,r,color){
+ ctx.fillStyle=color;ctx.beginPath();ctx.arc(p.x,p.y,r,0,TAU);ctx.fill();
+}
+function bone(a,b,color,width){
+ line(a,b,"#101b24",width+3);line(a,b,color,width);
+}
+function segment(l,z){
+ const q=ik(l,z),A=P(q.H.x,q.H.y,q.H.z),K=P(q.K.x,q.K.y,q.K.z),F=P(q.F.x,q.F.y,q.F.z);
+ const far=(s.turn*l.side)>0;
+ ctx.globalAlpha=far?.66:1;
+ bone(A,K,l.color,12);bone(K,F,l.color,10);
+ dot(K,7,l.color);dot(A,6,l.color);
+ const tip=P(l.foot.x,l.foot.y+s.face*.13,l.z+.04);
+ bone(F,tip,l.color,9);
+ ctx.globalAlpha=1;
+ if($("rig").checked){
+  line(A,K,"#eefaff",1.25);line(K,F,"#eefaff",1.25);
+  dot(K,2,"#17212c");dot(F,3,"#f5fbff");
+ }
+ ctx.font="bold 12px system-ui";ctx.textAlign="left";ctx.fillStyle=l.color;
+ ctx.fillText(l.id,F.x+9,F.y-7);
+}
+function arm(l,z){
+ const wave=Math.sin(TAU*(s.phase+l.off+.5))*(Math.abs(s.vel)>.03?1:0);
+ const Sh={x:s.x-s.turn*l.side*.28,y:s.y,z:z+.68};
+ const E={x:Sh.x-s.turn*l.side*.05,y:s.y+wave*.19*s.face,z:z+.29};
+ const Hand={x:E.x,y:E.y+wave*.12*s.face,z:z+.02};
+ const a=P(Sh.x,Sh.y,Sh.z),b=P(E.x,E.y,E.z),d=P(Hand.x,Hand.y,Hand.z);
+ const far=(s.turn*l.side)>0;
+ ctx.globalAlpha=far?.65:1;
+ bone(a,b,l.color,9);bone(b,d,l.color,8);dot(b,5,l.color);
+ ctx.globalAlpha=1;
+ if($("rig").checked){
+  line(a,b,"#f4fbff",1);line(b,d,"#f4fbff",1);dot(b,2,"#142331");
+ }
+}
+function drawGrid(){
+ ctx.fillStyle="#132833";ctx.fillRect(0,0,W,H);
+ const X=Math.floor(s.x),Y=Math.floor(s.y);
+ for(let i=-14;i<=14;i++){
+  const xx=X+i,yy=Y+i;
+  const a=P(xx,Y-14),b=P(xx,Y+14),c=P(X-14,yy),d=P(X+14,yy);
+  line(a,b,i===0?"#496a72":"#244551",i===0?1.3:.75);
+  line(c,d,i===0?"#496a72":"#244551",i===0?1.3:.75);
+ }
+}
+function groundMarks(){
+ const anchor=P(s.x,s.y);
+ ctx.fillStyle="#09151b88";ctx.beginPath();
+ ctx.ellipse(anchor.x,anchor.y+2,33,12,0,0,TAU);ctx.fill();
+ line({x:anchor.x-7,y:anchor.y},{x:anchor.x+7,y:anchor.y},"#76e8aa",2);
+ line({x:anchor.x,y:anchor.y-7},{x:anchor.x,y:anchor.y+7},"#76e8aa",2);
+ for(const l of legs){
+  const g=P(l.foot.x,l.foot.y);
+  ctx.strokeStyle=l.color;ctx.lineWidth=1.8;
+  ctx.setLineDash(l.swing?[3,3]:[]);
+  ctx.beginPath();ctx.ellipse(g.x,g.y,10,4,0,0,TAU);ctx.stroke();
+  ctx.setLineDash([]);
+  if(l.swing){
+   const a=P(l.from.x,l.from.y),b=P(l.to.x,l.to.y);
+   ctx.strokeStyle=l.color+"99";ctx.setLineDash([3,4]);ctx.beginPath();
+   ctx.moveTo(a.x,a.y);ctx.quadraticCurveTo((a.x+b.x)/2,(a.y+b.y)/2-20,b.x,b.y);
+   ctx.stroke();ctx.setLineDash([]);dot(b,3,l.color);
+  }else dot(g,3,l.color);
+ }
+}
+function torso(z){
+ const left=P(s.x-s.turn*.19,s.y,z),right=P(s.x+s.turn*.19,s.y,z);
+ const shL=P(s.x-s.turn*.27,s.y,z+.70),shR=P(s.x+s.turn*.27,s.y,z+.70);
+ ctx.fillStyle="#325b75";ctx.strokeStyle="#0d1c29";ctx.lineWidth=4;
+ ctx.beginPath();ctx.moveTo(left.x,left.y);ctx.lineTo(shL.x,shL.y);
+ ctx.lineTo(shR.x,shR.y);ctx.lineTo(right.x,right.y);ctx.closePath();ctx.fill();ctx.stroke();
+ const pelvis=P(s.x,s.y,z);dot(pelvis,10,"#3b7087");
+ const head=P(s.x,s.y,z+1.02);
+ dot(head,18,"#10212b");dot(head,15,"#e9bc93");
+ dot({x:head.x-s.turn*10,y:head.y+s.turn*5},3,"#6e443d");
+ ctx.strokeStyle="#263a43";ctx.lineWidth=5;ctx.beginPath();
+ ctx.arc(head.x,head.y,15,Math.PI*1.08,Math.PI*1.96);ctx.stroke();
+ if($("rig").checked){
+  line(pelvis,P(s.x,s.y,z+.70),"#eaf7ff",1);dot(pelvis,3,"#9beac8");
+ }
+}
+function paint(){
+ W=canvas.clientWidth;H=canvas.clientHeight;if(!W||!H)return;
+ const dpr=Math.min(2,window.devicePixelRatio||1);
+ const pw=Math.round(W*dpr),ph=Math.round(H*dpr);
+ if(canvas.width!==pw||canvas.height!==ph){canvas.width=pw;canvas.height=ph}
+ ctx.setTransform(dpr,0,0,dpr,0,0);
+ ox=W*.50-CAM.ux*s.x-CAM.vx*s.y;
+ oy=H*.78-CAM.uy*s.x-CAM.vy*s.y;
+ drawGrid();groundMarks();
+ const z=pelvisZ();
+ const order=legs.slice().sort((a,b)=>P(hip(a,0).x,hip(a,0).y).y-P(hip(b,0).x,hip(b,0).y).y);
+ segment(order[0],z);arm(order[0],z);torso(z);segment(order[1],z);arm(order[1],z);
+ ctx.textAlign="left";ctx.font="11px system-ui";ctx.fillStyle="#bed5e0";
+ ctx.fillText("X ↘ 36/18   Y ↙ −36/18",10,H-26);
+ ctx.fillText("Мир: x "+s.x.toFixed(2)+"  y "+s.y.toFixed(2)+" | "+
+  (s.dir===1?"SW":s.dir===-1?"NE":"СТОП"),10,H-10);
+ const la=legs.map(l=>l.id+": "+(l.swing?"перенос":"опора")).join("  •  ");
+ ctx.textAlign="right";ctx.fillStyle="#edf6ff";ctx.fillText(la,W-8,16);
+}
+function metric(id,value,bad){$(id).textContent=value;$(id).className=bad?"warn":"ok"}
+function updateHUD(){
+ metric("slide",s.slide.toFixed(3),s.slide>.002);
+ metric("limp",s.limp===null?"—":s.limp.toFixed(1)+"%",s.limp!==null&&s.limp>8);
+ metric("stretch",s.stretch.toFixed(1)+"%",s.stretch>1);
+ metric("pop",s.pop.toFixed(1)+" px",s.pop>8);
+}
+function tick(ms){
+ const dt=prevStamp?Math.min(.033,(ms-prevStamp)/1000):1/60;prevStamp=ms;
+ if(!s.paused){s.lastDt=dt;simulate(dt)}
+ paint();
+ hudWait+=dt;if(hudWait>.12){updateHUD();hudWait=0}
+ requestAnimationFrame(tick);
+}
+init();requestAnimationFrame(tick);
+</script>
+</body>
+</html>
