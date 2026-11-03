@@ -33,7 +33,7 @@ input[type=checkbox]{accent-color:#54d9ed}
 </style>
 </head>
 <body>
-<header><b>Ходьба 3/4 · полигон</b><small>v0.3.3 · CMU: перенос веса</small></header>
+<header><b>Ходьба 3/4 · полигон</b><small>v0.3.4 · стопа и перекат</small></header>
 <div id="stage">
 <canvas id="view"></canvas>
 <div id="legend"><em>Л — левая</em> · <strong>П — правая</strong><br>зелёный + — опора тела<br>кольцо — зафиксированная стопа</div>
@@ -57,7 +57,7 @@ input[type=checkbox]{accent-color:#54d9ed}
 <div class="meter"><span>STRETCH</span><b class="ok" id="stretch">0.0%</b></div>
 <div class="meter"><span>POP / 60 fps</span><b class="ok" id="pop">0.0 px</b></div>
 </div>
-<div id="note">CMU 08_01: шаг адаптирован под длины костей (85%), таз и перенос веса. Старая походка сохранена для сравнения.</div>
+<div id="note">CMU 08_01: стопа ложится на плоскость, лёгкий перекат при отталкивании. Старая походка сохранена.</div>
 </div>
 <script>
 "use strict";
@@ -346,14 +346,37 @@ function dot(p,r,color){
 function bone(a,b,color,width){
  line(a,b,"#101b24",width+3);line(a,b,color,width);
 }
+// Стопа — один жёсткий элемент: подошва параллельна плоскости земли.
+// В конце опоры слегка поворачивается вокруг носка, без изменения длины.
+function footSole(l){
+ const fy=clamp(s.face,-1,1),fx=Math.sqrt(Math.max(0,1-fy*fy));
+ let pitch=0;
+ if(s.mode==="cmu"&&!s.anatomy&&!s.reorient){
+  if(l.swing){
+   const u=clamp((s.phase-MOCAP.starts[l.id])/(MOCAP.ends[l.id]-MOCAP.starts[l.id]),0,1);
+   pitch=.20*(1-smooth(clamp(u/.22,0,1)));
+  }else{
+   const stance=frac(s.phase-MOCAP.ends[l.id])/frac(MOCAP.starts[l.id]-MOCAP.ends[l.id]);
+   pitch=.20*smooth(clamp((stance-.82)/.18,0,1));
+  }
+  pitch*=clamp(Math.abs(s.vel)/.45,0,1);
+ }
+ const length=.38,soleZ=l.z+.035;
+ const toe={x:l.foot.x+fx*.26,y:l.foot.y+fy*.26,z:soleZ};
+ const heel={x:toe.x-fx*length*Math.cos(pitch),y:toe.y-fy*length*Math.cos(pitch),
+  z:soleZ+length*Math.sin(pitch)};
+ const mid={x:mix(heel.x,toe.x,.315),y:mix(heel.y,toe.y,.315),z:mix(heel.z,toe.z,.315)};
+ return {heel,toe,mid};
+}
 function segment(l,z){
  const q=ik(l,z),A=P(q.H.x,q.H.y,q.H.z),K=P(q.K.x,q.K.y,q.K.z),F=P(q.F.x,q.F.y,q.F.z);
  const far=(s.turn*l.side)>0;
  ctx.globalAlpha=far?.66:1;
  bone(A,K,l.color,12);bone(K,F,l.color,10);
  dot(K,7,l.color);dot(A,6,l.color);
- const tip=P(l.foot.x,l.foot.y+s.face*.13,l.z+.04);
- bone(F,tip,l.color,9);
+ const sole=footSole(l),heel=P(sole.heel.x,sole.heel.y,sole.heel.z),
+  toe=P(sole.toe.x,sole.toe.y,sole.toe.z),mid=P(sole.mid.x,sole.mid.y,sole.mid.z);
+ bone(F,mid,l.color,7);bone(heel,toe,l.color,9);
  ctx.globalAlpha=1;
  if($("rig").checked){
   line(A,K,"#eefaff",1.25);line(K,F,"#eefaff",1.25);
@@ -509,6 +532,15 @@ function runRegressions(){
  s.phase=.25;const stanceRight=hip(legs[0],0).x-s.x;
  s.phase=.75;const stanceLeft=hip(legs[0],0).x-s.x;
  results.push({test:"CMU: перенос веса",ok:stanceLeft-stanceRight>.07});
+ s.phase=.70;s.vel=2;const support=legs[1];support.swing=false;support.z=0;
+ const flatFoot=footSole(support);
+ const soleLength=(q)=>Math.hypot(q.heel.x-q.toe.x,q.heel.y-q.toe.y,q.heel.z-q.toe.z);
+ s.phase=.99;const pushedFoot=footSole(support);
+ results.push({test:"стопа: плоская опора и перекат",ok:
+  Math.abs(flatFoot.heel.z-flatFoot.toe.z)<.002 &&
+  pushedFoot.heel.z-pushedFoot.toe.z>.04 &&
+  Math.abs(soleLength(flatFoot)-soleLength(pushedFoot))<.001});
+
  for(const dir of [1,-1]){
   s.mode="cmu";s.speed=1;init();drive(dir);step(51);drive(-dir);step(180);
   results.push({test:"разворот "+(dir===1?"SW→NE":"NE→SW"),
