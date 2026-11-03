@@ -33,7 +33,7 @@ input[type=checkbox]{accent-color:#54d9ed}
 </style>
 </head>
 <body>
-<header><b>Ходьба 3/4 · полигон</b><small>v0.2 · анатомия</small></header>
+<header><b>Ходьба 3/4 · полигон</b><small>v0.2.1 · анатомия</small></header>
 <div id="stage">
 <canvas id="view"></canvas>
 <div id="legend"><em>Л — левая</em> · <strong>П — правая</strong><br>зелёный + — опора тела<br>кольцо — зафиксированная стопа</div>
@@ -91,7 +91,7 @@ function init(){
  for(const l of legs){
   l.foot={x:-l.side*.22,y:0};l.from={...l.foot};l.to={...l.foot};
   l.z=0;l.swing=false;l.last={...l.foot};l.stanceTime=0;
-  l.stanceSample=null;l.strideSample=null;l.lastLanding=null;l.oldKnee=null;
+  l.stanceSample=null;l.stanceCount=0;l.strideSample=null;l.lastLanding=null;l.oldKnee=null;
  }
  refreshButtons();updateHUD();
 }
@@ -107,7 +107,7 @@ $("reset").onclick=init;
 $("speed").oninput=e=>{s.speed=+e.target.value;$("speedValue").textContent=s.speed.toFixed(1)};
 
 function startSwing(l,cadence){
- l.swing=true;l.stanceSample=l.stanceTime;l.stanceTime=0;
+ l.swing=true;l.stanceSample=l.stanceTime;l.stanceCount++;l.stanceTime=0;
  l.from={...l.foot};
  const lead=Math.max(.28,Math.abs(s.vel)/cadence*.50);
  l.to={x:s.x-s.face*l.side*.22,y:s.y+s.face*lead};
@@ -149,7 +149,7 @@ function simulate(dt){
   }
  }
  const a=legs[0],b=legs[1];
- if(a.stanceSample!==null&&b.stanceSample!==null){
+ if(a.stanceCount>=2&&b.stanceCount>=2){
   const timeDiff=Math.abs(a.stanceSample-b.stanceSample)/
    Math.max(.01,(a.stanceSample+b.stanceSample)/2);
   const stepDiff=a.strideSample!==null&&b.strideSample!==null?
@@ -182,12 +182,15 @@ function ik(l,z){
  const K={x:H.x+ux*a+bx/bn*r,y:H.y+uy*a+by/bn*r,z:H.z+uz*a+bz/bn*r};
  const error=Math.max(Math.abs(vdist(H,K)-UPPER)/UPPER,Math.abs(vdist(K,F)-LOWER)/LOWER);
  s.stretch=Math.max(s.stretch,error*100);
- const screen=P(K.x,K.y,K.z);
+ // Считаем рывок в локальных экранных координатах относительно groundAnchor,
+ // иначе перемещение камеры/изменение viewport даёт ложный POP.
+ const screen=P(K.x,K.y,K.z),anchor=P(s.x,s.y);
+ const local={x:screen.x-anchor.x,y:screen.y-anchor.y};
  if(l.oldKnee){
-  const d=Math.hypot(screen.x-l.oldKnee.x,screen.y-l.oldKnee.y);
+  const d=Math.hypot(local.x-l.oldKnee.x,local.y-l.oldKnee.y);
   s.pop=Math.max(s.pop,d/Math.max(1/120,s.lastDt||1/60)/60);
  }
- l.oldKnee=screen;
+ l.oldKnee=local;
  return {H,K,F};
 }
 function line(a,b,color,width){
