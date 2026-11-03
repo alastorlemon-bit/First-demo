@@ -33,7 +33,7 @@ input[type=checkbox]{accent-color:#54d9ed}
 #widthReadout{font-size:11px;color:#b2dbe7;padding:0 2px 6px;line-height:1.25}
 .widthButtons button{font-size:12px;min-height:40px}
 /* Изолированный графический адаптер: исходный риг/ходьба не меняются. */
-#artTools{position:absolute;z-index:5;top:6px;right:6px;width:min(88vw,340px);max-height:calc(100% - 12px);overflow:auto;color:#eef8ff;background:#102330f2;border:1px solid #527886;border-radius:10px;box-shadow:0 6px 22px #0009}
+#artTools{position:absolute;z-index:5;top:40px;right:6px;width:min(88vw,340px);max-height:calc(100% - 46px);overflow:auto;color:#eef8ff;background:#102330f2;border:1px solid #527886;border-radius:10px;box-shadow:0 6px 22px #0009}
 #artTools summary{cursor:pointer;padding:7px 10px;font-size:12px;font-weight:700;list-style:none;touch-action:manipulation}
 #artTools[open] summary{border-bottom:1px solid #34515b}
 #artPanel{padding:9px;display:grid;gap:8px;font-size:12px}
@@ -59,7 +59,7 @@ input[type=checkbox]{accent-color:#54d9ed}
 <div id="legend"><em>Л — левая</em> · <strong>П — правая</strong><br>зелёный + — опора тела<br>кольцо — зафиксированная стопа</div>
 <div id="dimensions" hidden><b>Длины костей</b><br>Бедро: 0.80<br>Голень: 0.80<br>Плечо: 0.60<br>Предплечье: 0.54<br>Корпус: 0.86<br>Рост: ≈7 голов</div>
 </div>
-<details id="artTools"><summary>🎨 Графика персонажа · загрузить / настроить</summary>
+<details id="artTools"><summary>🎨 Детали · настроить</summary>
  <div id="artPanel">
   <label>Сменить лист: <input id="sheetInput" type="file" accept="image/png,image/webp"></label>
   <div id="artMessage">Автозагрузка листа графики…</div>
@@ -91,7 +91,7 @@ input[type=checkbox]{accent-color:#54d9ed}
 <div class="meter"><span>STRETCH</span><b class="ok" id="stretch">0.0%</b></div>
 <div class="meter"><span>POP / 60 fps</span><b class="ok" id="pop">0.0 px</b></div>
 </div>
-<div id="note">Сравнение плечевого пояса и талии с головой Ø28 px. Можно менять ширину прямо во время ходьбы. Оригинальная v0.3.4 сохранена отдельно.</div>
+<div id="note">Проба спрайтов на широком риге. Регулируй ширину во время ходьбы; оригинальная v0.3.4 сохранена отдельно.</div>
 </div>
 <script>
 "use strict";
