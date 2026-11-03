@@ -586,6 +586,10 @@ const ART_ANCHORS=Object.freeze({
  rightShin:[[.690,.096],[.597,.715]],
  leftShin:[[.50,.15],[.52,.67]]
 });
+// Проймы торса на исходном спрайте (анатомические стороны, вид 3/4 SW).
+const TORSO_SHOULDERS=Object.freeze({
+ right:[.130,.416],left:[.958,.483]
+});
 // Графический риг: постоянный размер деталей при повороте в глубину.
 // Физика IK остаётся прежней; только экранные суставы спрайтов
 // пересчитываются двухкостным 2D IK с неизменными длинами.
@@ -608,6 +612,33 @@ function spriteHalfClip(x,y,ux,uy,after){
  ctx.lineTo(x+px*m+ux*m*sign,y+py*m+uy*m*sign);
  ctx.closePath();
  ctx.clip();
+}
+// Проецируем произвольную метку арт-детали тем же преобразованием, что и спрайт.
+function spriteMappedAnchor(part,start,end,mark){
+ const box=sheet.boxes[sheet.assigned[part]];
+ if(!box||!sheet.image)return null;
+ const anchors=ART_ANCHORS[part];
+ const ax=anchors[0][0]*box.w,ay=anchors[0][1]*box.h;
+ const vx=(anchors[1][0]-anchors[0][0])*box.w;
+ const vy=(anchors[1][1]-anchors[0][1])*box.h;
+ const srcLen=Math.hypot(vx,vy),dx=end.x-start.x,dy=end.y-start.y;
+ const dstLen=Math.hypot(dx,dy);
+ if(srcLen<1||dstLen<.01)return null;
+ const px=mark[0]*box.w-ax,py=mark[1]*box.h-ay;
+ const longitudinal=(px*vx+py*vy)/(srcLen*srcLen)*dstLen;
+ const transverse=(-px*vy+py*vx)/(srcLen*srcLen)*ART_LENGTH[part]*sheet.width;
+ return {x:start.x+(dx*longitudinal-dy*transverse)/dstLen,
+  y:start.y+(dy*longitudinal+dx*transverse)/dstLen};
+}
+function torsoShoulderPoint(l,z){
+ const sway=pelvisSway();
+ const head=P(s.x+sway*.18,s.y,z+BONES.headOffset);
+ const pelvis=P(s.x+sway,s.y,z);
+ // При развороте плечевые точки меняются плавно: обе руки не перескакивают.
+ const u=clamp((s.turn*l.side+1)*.5,0,1);
+ const mark=[mix(TORSO_SHOULDERS.left[0],TORSO_SHOULDERS.right[0],u),
+  mix(TORSO_SHOULDERS.left[1],TORSO_SHOULDERS.right[1],u)];
+ return spriteMappedAnchor("torso",head,pelvis,mark);
 }
 function drawSpriteBetween(part,start,end){
  const index=sheet.assigned[part],box=sheet.boxes[index];
@@ -717,7 +748,17 @@ function arm(l,z){
   Math.abs(vdist(E,Hand)-BONES.forearm)/BONES.forearm
  );
  s.stretch=Math.max(s.stretch,armError*100);
- const a=P(Sh.x,Sh.y,Sh.z),b=P(E.x,E.y,E.z),d=P(Hand.x,Hand.y,Hand.z);
+ let a=P(Sh.x,Sh.y,Sh.z),b=P(E.x,E.y,E.z),d=P(Hand.x,Hand.y,Hand.z);
+ if(artEnabled()){
+  const shoulderArt=torsoShoulderPoint(l,z);
+  if(shoulderArt){
+   // Сдвигаем графику руки целиком без изменения её длины или мировой кинематики.
+   const armGraphicOffset={x:shoulderArt.x-a.x,y:shoulderArt.y-a.y};
+   a=shoulderArt;
+   b={x:b.x+armGraphicOffset.x,y:b.y+armGraphicOffset.y};
+   d={x:d.x+armGraphicOffset.x,y:d.y+armGraphicOffset.y};
+  }
+ }
  const far=(s.turn*l.side)>0;
  ctx.globalAlpha=far?.65:1;
  if(artEnabled()){
