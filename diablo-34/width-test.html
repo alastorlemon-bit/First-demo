@@ -126,9 +126,9 @@ function moveMocapSwing(l){
 const CAM={ux:36,uy:18,vx:-36,vy:18,h:72};
 // Только визуальная ширина: смещения плеч совпадают в корпусе и точках крепления рук.
 const WIDTHS=Object.freeze({
- orig:Object.freeze({label:"Исходная",shoulder:.27,waist:.19}),
- mid:Object.freeze({label:"Средняя",shoulder:.36,waist:.24}),
- wide:Object.freeze({label:"Широкая",shoulder:.45,waist:.29})
+ orig:Object.freeze({label:"Исходная",shoulder:.27,waist:.19,hip:.16}),
+ mid:Object.freeze({label:"Средняя",shoulder:.36,waist:.24,hip:.20}),
+ wide:Object.freeze({label:"Широкая",shoulder:.45,waist:.29,hip:.24})
 });
 let widthKey="mid";
 const widthPreset=()=>WIDTHS[widthKey];
@@ -145,7 +145,7 @@ function vdist(a,b){return Math.hypot(a.x-b.x,a.y-b.y,a.z-b.z)}
 function P(x,y,z=0){return {x:ox+CAM.ux*x+CAM.vx*y,y:oy+CAM.uy*x+CAM.vy*y-z*CAM.h}}
 // Перенос таза на опорную ногу; плечи и голова компенсируют наклон.
 function pelvisSway(){return s.mode==="cmu"&&!s.anatomy?s.turn*.054*Math.cos(TAU*(s.phase-.75)):0}
-function hip(l,z){return {x:s.x+pelvisSway()-s.turn*l.side*.16,y:s.y,z}}
+function hip(l,z){return {x:s.x+pelvisSway()-s.turn*l.side*widthPreset().hip,y:s.y,z}}
 function refreshButtons(){
  $("cmu").classList.toggle("active",s.mode==="cmu");
  $("classic").classList.toggle("active",s.mode==="classic");
@@ -158,7 +158,7 @@ function refreshButtons(){
  for(const [key,id] of [["orig","widthOrig"],["mid","widthMid"],["wide","widthWide"]])
   $(id).classList.toggle("active",widthKey===key);
  const w=widthPreset();
- $("widthReadout").textContent=w.label+" · плечи "+(2*w.shoulder*CAM.ux).toFixed(1)+" px · талия "+(2*w.waist*CAM.ux).toFixed(1)+" px · голова 28 px";
+ $("widthReadout").textContent=w.label+" · плечи "+(2*w.shoulder*CAM.ux).toFixed(1)+" px · талия "+(2*w.waist*CAM.ux).toFixed(1)+" px · таз "+(2*w.hip*CAM.ux).toFixed(1)+" px · голова 28 px";
 }
 function init(){
  s.x=s.y=s.phase=s.vel=s.slide=s.pop=s.stretch=0;
@@ -539,8 +539,17 @@ function tick(ms){
 // Встроенные регрессионные проверки: открой ?qa=1 на опубликованном полигоне.
 // Запускаются только по запросу и не меняют обычный игровой цикл.
 function runRegressions(){
- const originalMode=s.mode,originalSpeed=s.speed;
+ const originalMode=s.mode,originalSpeed=s.speed,originalWidth=widthKey;
  const results=[],step=(n)=>{for(let k=0;k<n;k++){s.lastDt=1/60;simulate(1/60);paint()}};
+ // При смене ширины суставы таза двигаются вместе с поясом, независимо от ракурса.
+ let hipsOK=true;
+ for(const [preset,expected] of [["orig",.32],["mid",.40],["wide",.48]]){
+  widthKey=preset;
+  const span=Math.abs(hip({side:-1},0).x-hip({side:1},0).x);
+  hipsOK=hipsOK&&Math.abs(span-expected)<.00001;
+ }
+ widthKey=originalWidth;
+ results.push({test:"ширина таза: 3 пропорции",ok:hipsOK});
  s.mode="cmu";s.speed=1;init();drive(1);
  let maxHeightError=0,maxHeightJump=0,previousHeight=null;
  for(let k=0;k<150;k++){
@@ -586,7 +595,7 @@ function runRegressions(){
   results.push({test:"20 с / без бокового дрейфа "+(dir===1?"SW":"NE"),
    ok:aligned&&s.stretch<1});
  }
- s.mode=originalMode;s.speed=originalSpeed;init();
+ s.mode=originalMode;s.speed=originalSpeed;widthKey=originalWidth;init();
  return results;
 }
 init();
