@@ -600,6 +600,27 @@ const ART_LENGTH=Object.freeze({
  rightThigh:BONES.thigh*CAM.h,leftThigh:BONES.thigh*CAM.h,
  rightShin:BONES.shin*CAM.h,leftShin:BONES.shin*CAM.h
 });
+// Только графические концы сегментов, без изменения мировых суставов и IK.
+function visualShinAnchors(knee,ankle,heel){
+ return {start:knee,end:{x:mix(ankle.x,heel.x,.60),y:mix(ankle.y,heel.y,.60)}};
+}
+function visualArmWrist(side,elbow,wrist){
+ return side==="П"?{x:mix(elbow.x,wrist.x,.94),y:mix(elbow.y,wrist.y,.94)}:wrist;
+}
+function drawShoulderSeal(l,z){
+ if(!artEnabled())return;
+ const p=torsoShoulderPoint(l,z);
+ if(!p)return;
+ const center=P(s.x+pelvisSway()*.28,s.y,z+BONES.torso);
+ const inward=Math.sign(center.x-p.x)||1;
+ // Ткань в глубине проймы: рукав поворачивается сверху, без дырки фона.
+ ctx.save();
+ ctx.fillStyle="#31494b";
+ ctx.beginPath();
+ ctx.ellipse(p.x+inward*3,p.y+3,7.5*sheet.width,8.5*sheet.width,0,0,TAU);
+ ctx.fill();
+ ctx.restore();
+}
 // Все исходные суставы используются напрямую; второй визуальный IK удалён.
 // Неизменна поперечная толщина. Продольная проекция одежды сжимается по кости.
 // Кисти и сапоги ниже запястья/лодыжки рисуются в постоянном масштабе.
@@ -687,23 +708,23 @@ function drawSpriteBetween(part,start,end){
 
 function segment(l,z){
  const q=ik(l,z),A=P(q.H.x,q.H.y,q.H.z),K=P(q.K.x,q.K.y,q.K.z),F=P(q.F.x,q.F.y,q.F.z);
+ const sole=footSole(l),heel=P(sole.heel.x,sole.heel.y,sole.heel.z),
+  toe=P(sole.toe.x,sole.toe.y,sole.toe.z),mid=P(sole.mid.x,sole.mid.y,sole.mid.z);
  const far=(s.turn*l.side)>0;
  ctx.globalAlpha=far?.66:1;
  if(artEnabled()){
-  const side=l.id==="П"?"right":"left";
+  const side=l.id==="П"?"right":"left",shin=visualShinAnchors(K,F,heel);
   if(l.id==="Л"){
-   drawSpriteBetween(side+"Shin",K,F);
+   drawSpriteBetween(side+"Shin",shin.start,shin.end);
    drawSpriteBetween(side+"Thigh",A,K);
   }else{
    drawSpriteBetween(side+"Thigh",A,K);
-   drawSpriteBetween(side+"Shin",K,F);
+   drawSpriteBetween(side+"Shin",shin.start,shin.end);
   }
  }else{
   bone(A,K,l.color,12);bone(K,F,l.color,10);
   dot(K,7,l.color);dot(A,6,l.color);
  }
- const sole=footSole(l),heel=P(sole.heel.x,sole.heel.y,sole.heel.z),
-  toe=P(sole.toe.x,sole.toe.y,sole.toe.z),mid=P(sole.mid.x,sole.mid.y,sole.mid.z);
  if(!artEnabled()){bone(F,mid,l.color,7);bone(heel,toe,l.color,9)}
  ctx.globalAlpha=1;
  if($("rig").checked){
@@ -764,7 +785,7 @@ function arm(l,z){
  if(artEnabled()){
   const side=l.id==="П"?"right":"left";
   drawSpriteBetween(side+"UpperArm",a,b);
-  drawSpriteBetween(side+"Forearm",b,d);
+  drawSpriteBetween(side+"Forearm",b,visualArmWrist(l.id,b,d));
  }else{
   bone(a,b,l.color,9);bone(b,d,l.color,8);dot(b,5,l.color);dot(d,5,l.color);
  }
@@ -846,6 +867,7 @@ function paint(){
  // Левая нога всегда позади корпуса: голень → бедро → торс.
  if(order[1].id==="Л")segment(order[1],z);
  torso(z);
+ if(artEnabled())for(const l of legs)drawShoulderSeal(l,z);
  if(order[1].id!=="Л")segment(order[1],z);
  arm(order[1],z);
  ctx.textAlign="left";ctx.font="11px system-ui";ctx.fillStyle="#bed5e0";
@@ -883,6 +905,14 @@ function runRegressions(){
  }
  widthKey=originalWidth;
  results.push({test:"ширина таза: 3 пропорции",ok:hipsOK});
+ const knee={x:9,y:0},ankle={x:10,y:20},heel={x:14,y:24};
+ const shin=visualShinAnchors(knee,ankle,heel);
+ results.push({test:"графика голени: к пятке, колено закреплено",ok:
+  shin.start===knee&&Math.abs(shin.end.x-12.4)<1e-8&&Math.abs(shin.end.y-22.4)<1e-8});
+ const elbow={x:2,y:10},wrist={x:2,y:40};
+ results.push({test:"графика правой руки: короткая кисть, левая без изменений",ok:
+  Math.abs(visualArmWrist("П",elbow,wrist).y-38.2)<1e-8&&
+  visualArmWrist("Л",elbow,wrist)===wrist});
  s.mode="cmu";s.speed=1;init();drive(1);
  let maxHeightError=0,maxHeightJump=0,previousHeight=null;
  for(let k=0;k<150;k++){
