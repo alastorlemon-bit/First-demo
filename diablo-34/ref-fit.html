@@ -61,7 +61,7 @@ input[type=checkbox]{accent-color:#54d9ed}
 <div class="refRow"><label>Прозрачность <input id="refAlpha" type="range" min=".2" max=".9" step=".05" value=".55"></label></div>
 <div class="refRow"><label>Масштаб <input id="refZoom" type="range" min=".65" max="1.65" step=".01" value="1"></label></div>
 <div class="refRow"><label>X <input id="refDX" type="range" min="-100" max="100" step="1" value="0"></label><label>Y <input id="refDY" type="range" min="-100" max="100" step="1" value="0"></label></div>
-<div id="refStatus">Мастер 1024×1536. Оранжевые точки — правая сторона, голубые — левая. Перетаскивай точки на суставы.</div>
+<div id="refStatus">Мастер 1024×1536. Оранжевые точки — правая сторона, голубые — левая. Перетаскивай точки на суставы.</div><div id="refFitStats" aria-live="off" style="font-size:11px;color:#e5bafb;margin:4px 0"></div>
 <div class="refRow"><button id="refCopy">Скопировать точки</button><button id="refReset">Сбросить точки</button></div>
 </details>
 <div class="buttons widthButtons"><button id="widthOrig">Узкий · 19</button><button id="widthMid">Средний · 26</button><button id="widthWide">Широкий · 32</button></div>
@@ -106,7 +106,7 @@ try{
  const saved=JSON.parse(localStorage.getItem("diablo34-master-points-v1"));
  if(Array.isArray(saved)&&saved.length===refPoints.length&&saved.every((p,i)=>p.id===refPoints[i].id&&Number.isFinite(p.x)&&Number.isFinite(p.y)))refPoints=saved;
 }catch(e){}
-let refDrag=-1;
+let refDrag=-1,lastFitUpdate=0;
 refImage.onload=()=>paint();
 function refState(){return {visible:$("refVisible").checked,markers:$("refMarkers").checked,alpha:+$("refAlpha").value,zoom:+$("refZoom").value,dx:+$("refDX").value,dy:+$("refDY").value}}
 function refTransform(z){
@@ -136,6 +136,19 @@ function drawReference(z){
   ctx.beginPath();ctx.arc(c.x,c.y,i===refDrag?7:5,0,Math.PI*2);ctx.fill();ctx.stroke();
  }
  ctx.restore();
+}
+function updateRefFitStats(z){
+ const now=performance.now();if(now-lastFitUpdate<180)return;lastFitUpdate=now;
+ const t=refTransform(z),w=widthPreset();
+ const error=(key,world)=>{
+  const ref=refPoints.find(p=>p.id===key),p=refCanvasPoint(ref,t),rig=P(world.x,world.y,world.z);
+  return Math.round(Math.hypot(p.x-rig.x,p.y-rig.y));
+ };
+ const sh=(side)=>({x:s.x+pelvisSway()*.28-s.turn*side*w.shoulder,y:s.y,z:z+BONES.torso});
+ const hR=hip({side:1},z),hL=hip({side:-1},z);
+ const sr=error("R_sh",sh(1)),sl=error("L_sh",sh(-1)),
+       hr=error("R_hip",hR),hl=error("L_hip",hL);
+ $("refFitStats").textContent="Разница точек в экране: плечи П "+sr+" / Л "+sl+" px · таз П "+hr+" / Л "+hl+" px. Оценка зависит от ручной разметки.";
 }
 function refPointer(e){
  const b=canvas.getBoundingClientRect();
@@ -618,7 +631,7 @@ function paint(){
  oy=H*.78-CAM.uy*s.x-CAM.vy*s.y;
  drawGrid();
  const z=pelvisZ();
- drawReference(z);groundMarks();
+ drawReference(z);updateRefFitStats(z);groundMarks();
  const order=legs.slice().sort((a,b)=>P(hip(a,0).x,hip(a,0).y).y-P(hip(b,0).x,hip(b,0).y).y);
  segment(order[0],z);arm(order[0],z);torso(z);segment(order[1],z);arm(order[1],z);
  ctx.textAlign="left";ctx.font="11px system-ui";ctx.fillStyle="#bed5e0";
