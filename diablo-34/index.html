@@ -33,7 +33,7 @@ input[type=checkbox]{accent-color:#54d9ed}
 </style>
 </head>
 <body>
-<header><b>Ходьба 3/4 · полигон</b><small>v0.3.1 · поворот + опора</small></header>
+<header><b>Ходьба 3/4 · полигон</b><small>v0.3.2 · стопы без дрейфа</small></header>
 <div id="stage">
 <canvas id="view"></canvas>
 <div id="legend"><em>Л — левая</em> · <strong>П — правая</strong><br>зелёный + — опора тела<br>кольцо — зафиксированная стопа</div>
@@ -91,7 +91,9 @@ function startMocapSwing(l){
  const a=mocapFoot(l,mocapPose(MOCAP.starts[l.id])),b=mocapFoot(l,mocapPose(MOCAP.ends[l.id]));
  l.swing=true;l.stanceSample=l.stanceTime;l.stanceCount++;l.stanceTime=0;
  l.from={...l.foot};l.mocapA=a;l.mocapB=b;
- l.to={x:l.from.x+s.turn*(b.x-a.x),y:l.from.y+s.face*(b.y-a.y)};
+ // Модель движется вдоль Y: постоянные зеркальные дорожки стоп по X,
+ // без интегрирования поперечного дрейфа из исходной BVH-записи.
+ l.to={x:s.x-s.turn*l.side*.115,y:l.from.y+s.face*(b.y-a.y)};
 }
 function moveMocapSwing(l){
  const p=mocapFoot(l,mocapPose(s.phase)),a=l.mocapA,b=l.mocapB;
@@ -504,6 +506,12 @@ function runRegressions(){
  results.push({test:"касания стоп",ok:max.Л<.08&&max.П<.08});
  s.mode="classic";s.speed=1;init();drive(1);step(120);
  results.push({test:"старый режим",ok:s.stretch<1});
+ for(const dir of [1,-1]){
+  s.mode="cmu";s.speed=1;init();drive(dir);step(60*20);
+  const aligned=legs.every(l=>Math.abs(l.foot.x-s.x)<.30);
+  results.push({test:"20 с / без бокового дрейфа "+(dir===1?"SW":"NE"),
+   ok:aligned&&s.stretch<1});
+ }
  s.mode=originalMode;s.speed=originalSpeed;init();
  return results;
 }
