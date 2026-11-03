@@ -1,4 +1,4 @@
-<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5,viewport-fit=cover"><title>Дорога приключений · Истоки · α 0.3</title>
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5,viewport-fit=cover"><title>Дорога приключений · Истоки · α 0.3.1</title>
 <style>:root{color-scheme:dark;--ink:#ecdcb9;--muted:#a5b1c3;--gold:#d5ae6e;--outline:#a18c68;--paper:#1d2533;--accent:#f1c481}
 *{box-sizing:border-box}html,body{margin:0;height:100%;width:100%;overflow:hidden;background:#090d15;color:var(--ink);font-family:system-ui,Roboto,'Segoe UI',sans-serif}button,input{font:inherit}button{color:inherit;cursor:pointer;touch-action:manipulation}button:disabled{opacity:.38;cursor:default}img{max-width:100%}.centering{position:fixed;inset:0;display:grid;place-items:center;overflow:hidden;background:#080b11}#stage{position:relative;width:1536px;height:690px;flex:none;overflow:hidden;background:radial-gradient(ellipse at 47% 40%,#20293b 0%,#111925 71%,#12151b 100%);border:1px solid #735e43;box-shadow:0 0 0 3px #05080c,0 0 70px #000;transform-origin:center center}#stage:before{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(125deg,#ffffff05,transparent 45%,#0003)}
 #stageHeader{height:60px;display:flex;align-items:center;gap:10px;padding:6px 14px;background:linear-gradient(#2f2d33,#111a29);border-bottom:2px solid #786345;position:relative;z-index:2}.brand{font-family:Georgia,serif;font-size:22px;font-weight:700;letter-spacing:.02em;white-space:nowrap;text-shadow:0 1px 2px black}.brand small{font:11px system-ui;color:#a9b2bd;display:block;letter-spacing:.04em}.grow{flex:1}.headerTag{font-size:14px;border:1px solid #5b6a7d;padding:8px 10px;border-radius:8px;color:#d5dced}.topBtn,.ctrl{background:linear-gradient(#333b4d,#202936);border:1px solid #786a53;border-radius:8px;padding:8px 12px;font-size:15px;white-space:nowrap}.topBtn:hover,.ctrl:hover{background:#4e5265}.goldBtn{background:linear-gradient(#e7c88e,#ac8248);border:1px solid #ffdc9c;border-radius:9px;color:#1b1c20;font-weight:800;padding:9px 15px}.tinyIcon{width:23px;height:23px;object-fit:contain;vertical-align:middle;flex:none}.inlineIcon{width:1.15em;height:1.15em;object-fit:contain;vertical-align:-.23em;margin:0 .1em}.noSelect{user-select:none}.sectionTitle{font:700 15px Georgia,serif;letter-spacing:.08em;color:#e7cc9d;text-transform:uppercase}
@@ -55,6 +55,112 @@
 @media(max-width:640px){.poolLayout{grid-template-columns:1fr}.poolSide{order:0}.poolMain{order:1}.poolDie{height:78px;width:57px}.dieIcon{width:35px;height:48px}.classDevelopment{flex-direction:column;align-items:center}.classDevCard{height:min(43dvh,330px);max-width:94vw}.classDevControls{width:100%;min-width:0}.challengeLarge{height:min(64dvh,640px)}.routeControl{min-height:44px}}
 
 .challengeModal .travelIcon{position:absolute;right:32px;top:55px;z-index:3;background:#283b4d;border:1px solid #e3c27f;border-radius:7px;padding:5px;display:flex;align-items:center;gap:5px;color:#fbe2ae;font-size:13px}.challengeModal .travelIcon img{width:18px;height:18px}
+
+/* α 0.3.1 — card-first proportions and readable legends */
+#stageHeader{height:55px;padding:5px 12px;gap:7px}
+#stageScreen{height:635px;padding:8px}
+.table-grid{grid-template-columns:710px 172px minmax(0,1fr);gap:8px;height:619px}
+.frame{padding:7px;border-width:1px}
+.marketArea{gap:4px;justify-content:space-around}
+.marketArea .marketRow{height:192px;gap:4px;flex-shrink:0}
+.marketArea .marketSlot{width:110px;flex-basis:110px;height:188px;padding:1px}
+.marketArea .deckBox{width:47px;flex-basis:47px;gap:3px}
+.marketArea .deckTop{width:46px;height:124px}
+.marketArea .deckCount{width:46px;font-size:14px;padding:3px 0}
+.marketArea .deckTop img:not(.deckBack){width:100%;height:100%;object-fit:contain}
+.villainArea{gap:6px;align-items:stretch}
+.villainArea .sectionTitle{font-size:13px}
+.villainView{flex-direction:column;gap:4px;align-items:center;justify-content:flex-start}
+.villainFace{width:144px;height:239px;max-width:100%;object-fit:contain}
+.villainMiniInfo{width:100%;display:flex;align-items:center;justify-content:space-between;gap:5px;font-size:11px;line-height:1.1}
+.villainMiniInfo>div:first-child{flex:1;min-width:0;overflow:hidden;max-height:38px}
+.villainMiniInfo>div:nth-child(2){white-space:nowrap;flex:none}
+.villainMiniInfo>div:nth-child(3){display:flex;max-width:54px;flex-wrap:wrap;justify-content:end}
+.villainMiniInfo .tinyIcon{width:16px;height:16px;margin:0}
+.plotPanel{height:82px;display:flex;flex-direction:column;justify-content:center;gap:2px;font-size:12px;padding:4px}
+.plotPanel img{height:26px;width:26px}
+.plotPanel span br{display:none}
+.villainXP{margin-top:auto;padding:5px;font-size:20px}
+.villainLast{height:36px;font-size:10px;padding:3px}
+.heroArea{gap:4px}
+.heroTop{height:39px;gap:4px;padding-bottom:3px}
+.heroTop .heroBadge{min-width:51px;padding:4px 5px;font-size:12px}
+.heroTop strong{font-size:13px}
+.alignGauge{gap:3px;padding:2px}
+.alignGauge>span{font-size:10px;gap:2px}
+.alignGauge .alignCell{width:21px;height:23px;font-size:11px}
+.turnStrip{font-size:12px;gap:3px}
+.turnStrip .tinyIcon{width:18px;height:18px}
+.characterTitle{font-size:10px;padding:0;min-height:15px}
+.heroCards{gap:5px}
+.heroCard{height:232px;padding:1px}
+.heroCard .cardType{font-size:10px;padding:2px}
+.classTierMarks{bottom:20px}
+.classTierMarks em{font-size:10px;padding:2px}
+.historyBoard{height:56px;gap:5px}
+.historyColumn{gap:2px}
+.histSlice{height:17px}
+.histSlice span{font-size:9px;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;padding:0 3px}
+.heroStats{height:127px;gap:3px;padding-top:2px}
+.heroStats .sectionTitle{font-size:11px;line-height:12px}
+.statGroup{gap:3px}
+.statCell{height:44px;flex-direction:column;gap:0;padding:2px 1px}
+.statMain{display:flex;align-items:center;justify-content:center;gap:3px;height:22px}
+.statCell img{height:21px;width:21px}
+.statCell strong{font-size:16px}
+.statCell small{font-size:10px;line-height:13px;color:#c0cbd4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.scoreRow{gap:4px}
+.scoreTile{min-height:32px;padding:2px;gap:3px}
+.scoreTile img{height:18px;width:18px}
+.scoreTile strong{font-size:15px}
+.scoreTile small{font-size:10px;color:#d7d1c5;white-space:nowrap}
+.heroActions button{padding:6px 2px;font-size:12px}
+.setupGridV3{grid-template-columns:repeat(4,minmax(0,1fr)) 244px;gap:8px;height:619px}
+.setupSlot{padding:6px 7px;gap:4px;border-width:1px}
+.setupSlot .setupColHeader{height:27px;font-size:16px}
+.swingViewport{height:401px;max-width:254px;width:100%;border-radius:7px}
+.swingItem{height:401px;border-bottom:0;padding:2px}
+.swingItem img{width:100%;height:100%;max-width:100%;max-height:100%;object-fit:contain}
+.switchArrow{height:24px;line-height:20px;font-size:20px;width:138px}
+.setupSelected{font-size:14px;min-height:19px}
+.setupSelectedIcons{min-height:34px;gap:3px;flex-wrap:wrap;align-content:center}
+.setupToken{display:inline-flex;gap:2px;align-items:center;background:#121d2d;border:1px solid #746d5e;border-radius:4px;padding:2px 3px;color:#e9d7b5;white-space:nowrap}
+.setupToken img{height:16px;width:16px}
+.setupToken small{font-size:10px}
+.setupToken b{font-size:11px}
+.slotInfo{min-width:0;font-size:12px;padding:5px 8px}
+.setupBoss .bossChoiceHead{min-height:42px}
+.bossChoiceHead b{font-size:14px;line-height:1.12}
+.setupBoss .bossChoiceHead .ctrl{padding:5px 8px}
+.bossChoiceCard{height:420px;width:233px}
+.bossStat{padding:3px;gap:5px;font-size:12px}
+#nativeOverlay[data-mode="class"] .modalNative{width:min(760px,88vw);max-height:90dvh;padding:10px;font-size:13px}
+#nativeOverlay[data-mode="class"] .modalHead{padding-bottom:5px;margin-bottom:7px}
+#nativeOverlay[data-mode="class"] .modalHead strong{font-size:17px}
+#nativeOverlay[data-mode="class"] .modalHead button{min-width:31px;min-height:31px}
+#nativeOverlay[data-mode="class"] .classDevelopment{gap:10px;align-items:flex-start}
+#nativeOverlay[data-mode="class"] .classDevCard{height:min(72dvh,465px);max-width:34%;object-fit:contain}
+#nativeOverlay[data-mode="class"] .classDevControls{min-width:0}
+#nativeOverlay[data-mode="class"] .rollSummary{padding:5px;margin:2px 0 6px;gap:4px;font-size:12px}
+#nativeOverlay[data-mode="class"] .rollSummary strong{font-size:17px}
+#nativeOverlay[data-mode="class"] .tierLine{padding:6px 7px;margin:5px 0;gap:6px;line-height:1.23;font-size:12px}
+#nativeOverlay[data-mode="class"] .tierLine strong{min-width:42px;font-size:12px}
+#nativeOverlay[data-mode="class"] .tierLine img{height:17px;width:17px}
+#nativeOverlay[data-mode="class"] .rollButtons{margin-top:7px;gap:5px}
+#nativeOverlay[data-mode="class"] .rollButtons button{min-width:0;padding:7px;font-size:12px}
+#nativeOverlay[data-mode="class"] .smallPrint{font-size:11px;line-height:1.25}
+#nativeOverlay[data-mode="challenge"] .modalNative{padding:7px;max-width:min(88vw,620px)}
+#nativeOverlay[data-mode="challenge"] .modalHead{margin-bottom:5px;padding-bottom:5px}
+#nativeOverlay[data-mode="challenge"] .modalHead strong{font-size:16px}
+#nativeOverlay[data-mode="challenge"] .modalHead button{min-width:33px;min-height:29px}
+#nativeOverlay[data-mode="challenge"] .routeControl{min-height:28px;padding:4px;font-size:13px}
+#nativeOverlay[data-mode="challenge"] .challengeModal{gap:4px}
+@media(max-width:640px){
+#nativeOverlay[data-mode="class"] .modalNative{width:96vw}
+#nativeOverlay[data-mode="class"] .classDevelopment{flex-direction:column;align-items:center}
+#nativeOverlay[data-mode="class"] .classDevCard{height:min(36dvh,280px);max-width:74vw}
+#nativeOverlay[data-mode="class"] .classDevControls{width:100%}
+}
 </style></head><body>
 <div class="centering"><div id="stage"><header id="stageHeader"></header><section id="stageScreen"></section></div></div>
 <div id="nativeOverlay" role="dialog" aria-modal="true" style="display:none"></div>
@@ -389,6 +495,10 @@ const AB=['STR','DEX','CON','INT','WIS','CHA'];
 const STORY=['FAITH','JUSTICE','MAGIC','NOBILITY','VILLAINY','NATURE'];
 const RUS={STR:'Сила',DEX:'Ловкость',CON:'Телосложение',INT:'Интеллект',WIS:'Мудрость',CHA:'Обаяние'};
 const TYPES={heritage:'Наследие',origin:'Происхождение',class:'Класс',destiny:'Судьба'};
+const UI_NAMES={ability_str:'Сила',ability_dex:'Ловкость',ability_con:'Тело',ability_int:'Интел.',ability_wis:'Мудр.',ability_cha:'Обаяние',story_faith:'Вера',story_justice:'Закон',story_magic:'Магия',story_nobility:'Знать',story_villainy:'Зло',story_nature:'Природа',resource_xp:'Опыт',score_triumph:'Триумф',score_tragedy:'Трагедия',alignment_up:'Свет',alignment_down:'Тьма',action_hero:'Герой',action_anti:'Антигерой',card_class:'Класс'};
+function iconName(id){const key=String(id||'').toLowerCase();return UI_NAMES[key]||key.split('_').at(-1).slice(0,7);}
+function setupToken(id,n){const val=Number(n)||0;return `<span class="setupToken" title="${H(iconName(id))}">${I(id,'tinyIcon',iconName(id))}<small>${H(iconName(id))}</small><b>${val>0?'+':''}${val}</b></span>`;}
+
 let state=null,offers=null,picks={},villainChoice='EO-VIL-002',focusCard='',lastType='origin',modalMode='',overlayCleanup=null;
 function H(s){return String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
 function I(id,cls='inlineIcon',t=''){const k=String(id||'').toLowerCase();return ICONS[k]?`<img class="${cls}" src="${ICONS[k]}" title="${H(t||id)}" alt="${H(t||id)}">`:'';}
@@ -418,14 +528,14 @@ function setupCol(cat){
  const canSwitch=opts.length>1;
  return `<section class="setupSlot"><div class="setupColHeader">${I('card_'+cat)} ${TYPES[cat]}</div>
  <button class="switchArrow" data-swing="${cat}:-1" ${canSwitch?'':'disabled'} title="Предыдущая карта">⌃</button>
- <div class="swingViewport" data-swipe="${cat}"><div class="swingTrack" style="transform:translateY(${index===1?'-304px':'0px'})">${cards}</div></div>
+ <div class="swingViewport" data-swipe="${cat}"><div class="swingTrack" style="transform:translateY(${index===1?'-401px':'0px'})">${cards}</div></div>
  <button class="switchArrow" data-swing="${cat}:1" ${canSwitch?'':'disabled'} title="Следующая карта">⌄</button>
- <div class="setupSelected">${H(c?.title||'')}</div><div class="setupSelectedIcons">${(c?.header||[]).slice(0,5).map(x=>iconNum(x.icon,x.quantity)).join('')}</div>
+ <div class="setupSelected">${H(c?.title||'')}</div><div class="setupSelectedIcons">${(c?.header||[]).slice(0,5).map(x=>setupToken(x.icon,x.quantity)).join('')}</div>
  <button class="slotInfo" data-view="${selected}">Описание и эффекты ⓘ</button></section>`;
 }
 function renderSetup(){if(!offers)offers=E.createOffers(DB);if(!Object.keys(picks).length)picks=Object.fromEntries(Object.entries(offers).map(([k,v])=>[k,v[0]]));
  const v=DB.villains[villainChoice]?.initial;
- $('stageHeader').innerHTML=`<div class="brand">ДОРОГА ПРИКЛЮЧЕНИЙ<small>ИСТОКИ · СОЗДАНИЕ ПЕРСОНАЖА · α 0.3</small></div><span class="grow"></span><button class="topBtn" data-fullscreen title="Полный экран">⛶</button><button class="topBtn" data-newdeal>↻ Новая раздача</button><button class="goldBtn" data-startgame>Начать партию</button>`;
+ $('stageHeader').innerHTML=`<div class="brand">ДОРОГА ПРИКЛЮЧЕНИЙ<small>ИСТОКИ · СОЗДАНИЕ ПЕРСОНАЖА · α 0.3.1</small></div><span class="grow"></span><button class="topBtn" data-fullscreen title="Полный экран">⛶</button><button class="topBtn" data-newdeal>↻ Новая раздача</button><button class="goldBtn" data-startgame>Начать партию</button>`;
  $('stageScreen').innerHTML=`<div class="setupGridV3">${['heritage','origin','class','destiny'].map(setupCol).join('')}
  <section class="setupSlot setupBoss"><div class="setupColHeader">${I('villain_trigger')} ПРОТИВНИК</div><div class="bossChoiceHead"><button class="ctrl" data-vswitch="-1">‹</button><b>${H(v?.title||'')}</b><button class="ctrl" data-vswitch="1">›</button></div>
  <img class="bossChoiceCard" data-zoom="${villainChoice}_initial" src="${IMG(villainChoice+'_initial')||''}" alt="Карта злодея">
@@ -444,12 +554,12 @@ function heroCard(cat){const id=hero().character[cat],cls=cat==='class',n=hero()
  return `<button class="heroCard ${cls?'classCard':''}" ${cls?'data-classcard':'data-zoom="'+id+'"'} title="${H(card(id)?.title)}">${src(id)}${tiers}<span class="cardType">${H(TYPES[cat])}</span></button>`;}
 function historyColumn(act){const entries=hero().story.filter(x=>x.slotAct===act);return `<div class="historyColumn">${[0,1,2].map(i=>{const x=entries[i];return x?`<button class="histSlice" data-zoom="${x.cardId}" title="${H(card(x.cardId)?.title)}">${src(x.cardId)}<span>${H(card(x.cardId)?.title)}</span></button>`:'<div class="histSlice" title="Свободное место"></div>';}).join('')}</div>`;}
 function renderGame(){const p=hero(),v=state.villain,ABT=E.abilityTotals(DB,p),SYM=E.storySymbols(DB,p),SC=E.storyScore(DB,p),mand=E.getMandatory(state),prog=p.story.length;
- $('stageHeader').innerHTML=`<div class="brand">ДОРОГА ПРИКЛЮЧЕНИЙ<small>ИСТОКИ · ОДИНОЧНАЯ ПАРТИЯ · α 0.3</small></div><span class="headerTag">${state.phase==='turn'?'Ход '+state.turn:state.phase==='pre_roll'?'ПОДГОТОВКА БРОСКА':state.phase==='reacting'?'РЕАКЦИИ':'ИТОГИ'}</span><span class="grow"></span><span class="statusHint" style="max-width:260px">${H(latest()).slice(0,65)}</span><button class="topBtn" data-fullscreen title="Полный экран">⛶</button><button class="topBtn" data-help>?</button><button class="topBtn" data-save>↓</button><button class="topBtn" data-new>Новая</button>`;
+ $('stageHeader').innerHTML=`<div class="brand">ДОРОГА ПРИКЛЮЧЕНИЙ<small>ИСТОКИ · ОДИНОЧНАЯ ПАРТИЯ · α 0.3.1</small></div><span class="headerTag">${state.phase==='turn'?'Ход '+state.turn:state.phase==='pre_roll'?'ПОДГОТОВКА БРОСКА':state.phase==='reacting'?'РЕАКЦИИ':'ИТОГИ'}</span><span class="grow"></span><span class="statusHint" style="max-width:260px">${H(latest()).slice(0,65)}</span><button class="topBtn" data-fullscreen title="Полный экран">⛶</button><button class="topBtn" data-help>?</button><button class="topBtn" data-save>↓</button><button class="topBtn" data-new>Новая</button>`;
  const market=`<section class="frame marketArea">${[1,2,3].map(a=>{const discard=state.discardActs?.[a]||[],top=discard.at(-1);
  return `<div class="marketRow"><div class="deckBox actDeck" title="Колода акта ${a}"><div class="deckTop">${I('act_'+(['','i','ii','iii'][a]),'deckBack')}</div><div class="deckCount">${state.deck['act_'+a].length}</div></div>${[0,1,2,3,4].map(i=>marketSlot(a,i)).join('')}<button class="deckBox actDiscard" data-discard="${a}" title="Сброс акта ${a}"><div class="deckTop">${top?src(top):'<span class="emptyDiscard">∅</span>'}</div><div class="deckCount">${discard.length}</div></button></div>`;}).join('')}</section>`;
  const track=Array.from({length:7},(_,i)=>`<span class="alignCell ${p.alignment===i?'current':''}" title="${i<=2?'Свет':i===3?'Равновесие':'Тьма'}: ${i}">${i}${p.alignment===i?'<i>▼</i>':''}</span>`).join('');
- const stats=`<div class="heroStats"><div class="sectionTitle">Характеристики</div><div class="statGroup">${AB.map(k=>`<div class="statCell" title="${RUS[k]}">${I('ability_'+k.toLowerCase())}<strong>${ABT[k]||0}</strong></div>`).join('')}</div><div class="sectionTitle">Значки истории</div><div class="statGroup">${STORY.map(k=>`<div class="statCell">${I('story_'+k.toLowerCase())}<strong>${SYM['STORY_'+k]||0}</strong></div>`).join('')}</div></div>`;
- const counters=`<div class="scoreRow"><button class="scoreTile" data-score title="Триумф">${I('score_triumph')}<strong>${SC.triumph}</strong></button><button class="scoreTile" data-score title="Трагедия">${I('score_tragedy')}<strong>${SC.tragedy}</strong></button><button class="scoreTile" data-hands title="Карты на руке">${I('action_hero')}<strong>${p.hand.length}</strong></button><button class="scoreTile" data-classcard title="Опыт на карте класса">${I('card_class')}<strong>${p.classXp}</strong></button><button class="scoreTile" data-score title="Примерный счёт">✦<strong>${SC.subtotal}</strong></button></div>`;
+ const stats=`<div class="heroStats"><div class="sectionTitle">Характеристики</div><div class="statGroup">${AB.map(k=>`<div class="statCell" title="${RUS[k]}"><span class="statMain">${I('ability_'+k.toLowerCase())}<strong>${ABT[k]||0}</strong></span><small>${RUS[k]}</small></div>`).join('')}</div><div class="sectionTitle">Значки истории</div><div class="statGroup">${STORY.map(k=>`<div class="statCell" title="${iconName('story_'+k.toLowerCase())}"><span class="statMain">${I('story_'+k.toLowerCase())}<strong>${SYM['STORY_'+k]||0}</strong></span><small>${iconName('story_'+k.toLowerCase())}</small></div>`).join('')}</div></div>`;
+ const counters=`<div class="scoreRow"><button class="scoreTile" data-score title="Триумф">${I('score_triumph')}<small>Триумф</small><strong>${SC.triumph}</strong></button><button class="scoreTile" data-score title="Трагедия">${I('score_tragedy')}<small>Трагед.</small><strong>${SC.tragedy}</strong></button><button class="scoreTile" data-hands title="Карты на руке">${I('action_hero')}<small>Рука</small><strong>${p.hand.length}</strong></button><button class="scoreTile" data-classcard title="Опыт на карте класса">${I('card_class')}<small>Класс</small><strong>${p.classXp}</strong></button><button class="scoreTile" data-score title="Примерный счёт">✦<small>Счёт</small><strong>${SC.subtotal}</strong></button></div>`;
  const heroBoard=`<section class="frame heroArea"><div class="heroTop"><span class="heroBadge"><strong>Я</strong> · ${prog}/9</span><div class="alignGauge"><span>${I('alignment_up')} Свет</span><div class="alignTrack">${track}</div><span>Тьма ${I('alignment_down')}</span></div><div class="turnStrip">${iconNum('resource_xp',p.xp)} <b style="font-size:14px">Акт ${prog<3?'I':prog<6?'II':'III'}</b></div></div><div class="characterTitle"><span>МОЙ ПЕРСОНАЖ</span><span>История ${prog}/9</span></div><div class="heroCards">${['heritage','origin','class','destiny'].map(heroCard).join('')}</div><div class="historyBoard"><div class="historyColumn"></div>${[1,2,3].map(historyColumn).join('')}</div>${stats}${counters}<div class="heroActions"><button class="ctrl" data-hands>${I('action_hero','tinyIcon')} Рука</button><button class="ctrl" data-score>★ Счёт</button><button class="ctrl" data-adjust>±</button>${state.pending?'<button class="goldBtn" data-phase>Руны ↗</button>':mand?'':`<button class="goldBtn" data-next ${state.phase==='turn'&&p.turnActions?'':'disabled'}>Конец хода ›</button>`}</div>${state.status!=='in_progress'?`<div class="statusHint">${state.status==='won'?'Победа над злодеем!':'Поражение от злодея'}</div>`:''}</section>`;
  $('stageScreen').innerHTML=`<div class="table-grid">${market}${mainVillain()}${heroBoard}</div>`;
 }
