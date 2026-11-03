@@ -678,7 +678,8 @@ function groundMarks(){
 }
 function torso(z){
  const sway=pelvisSway(),waistX=s.x+sway,shoulderX=s.x+sway*.28;
- const left=P(waistX-s.turn*.19,s.y,z),right=P(waistX+s.turn*w.waist,s.y,z);
+ const w=widthPreset();
+ const left=P(waistX-s.turn*w.waist,s.y,z),right=P(waistX+s.turn*w.waist,s.y,z);
  const shL=P(shoulderX-s.turn*w.shoulder,s.y,z+BONES.torso),shR=P(shoulderX+s.turn*w.shoulder,s.y,z+BONES.torso);
  const pelvis=P(waistX,s.y,z);
  const head=P(s.x+sway*.18,s.y,z+BONES.headOffset);
