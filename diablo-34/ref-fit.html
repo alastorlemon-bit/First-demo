@@ -58,11 +58,11 @@ input[type=checkbox]{accent-color:#54d9ed}
 <label><input id="refVisible" type="checkbox" checked> Мастер</label>
 <label><input id="refMarkers" type="checkbox" checked> Точки</label>
 </div>
-<div class="refRow"><label>Прозрачность <input id="refAlpha" type="range" min=".2" max=".9" step=".05" value=".55"></label></div>
-<div class="refRow"><label>Масштаб <input id="refZoom" type="range" min=".65" max="1.65" step=".01" value="1"></label></div>
-<div class="refRow"><label>X <input id="refDX" type="range" min="-100" max="100" step="1" value="0"></label><label>Y <input id="refDY" type="range" min="-100" max="100" step="1" value="0"></label></div>
-<div id="refStatus">Мастер 1024×1536. Оранжевые точки — правая сторона, голубые — левая. Перетаскивай точки на суставы.</div><div id="refFitStats" aria-live="off" style="font-size:11px;color:#e5bafb;margin:4px 0"></div>
-<div class="refRow"><button id="refCopy">Скопировать точки</button><button id="refReset">Сбросить точки</button></div>
+<div class="refRow"><label>Прозрачность <input id="refAlpha" type="range" min=".2" max=".9" step=".05" value=".6"></label></div>
+<div class="refRow"><label>Масштаб <input id="refZoom" type="range" min=".65" max="1.65" step=".01" value=".98"></label></div>
+<div class="refRow"><label>X <input id="refDX" type="range" min="-100" max="100" step="1" value="2"></label><label>Y <input id="refDY" type="range" min="-100" max="100" step="1" value="-5"></label></div>
+<div id="refStatus">Точки от пользователя 03.11.2026. Оранжевые — анатомическая правая, голубые — левая. Масштаб и сдвиг влияют только на отображение.</div><div id="refFitStats" aria-live="off" style="font-size:11px;color:#e5bafb;margin:4px 0"></div>
+<div class="refRow"><button id="refAuto">Совместить голову и таз</button><button id="refUserView">Мой вид 1,5×</button></div><div class="refRow"><button id="refCopy">Скопировать точки</button><button id="refReset">Сбросить точки</button></div>
 </details>
 <div class="buttons widthButtons"><button id="widthOrig">Узкий · 19</button><button id="widthMid">Средний · 26</button><button id="widthWide">Широкий · 32</button></div>
 <div id="widthReadout" aria-live="polite"></div>
@@ -94,12 +94,13 @@ const $=id=>document.getElementById(id);
 // Оригинальное изображение не меняется: это только визуальная калька на отдельной странице.
 const refImage=new Image();
 refImage.src="./master-reference-preview.jpg";
+// Координаты уточнены пользователем по исходному мастеру 03.11.2026.
 const originalRefPoints=[
- ["head",491,205],["pelvis",490,690],
- ["R_sh",361,298],["R_el",274,483],["R_wr",211,594],
- ["R_hip",405,705],["R_knee",388,983],["R_ankle",371,1140],
- ["L_sh",680,377],["L_el",761,604],["L_wr",780,819],
- ["L_hip",558,710],["L_knee",614,1067],["L_ankle",622,1270]
+ ["head",491,205],["pelvis",478,716],
+ ["R_sh",381,312],["R_el",300,470],["R_wr",211,619],
+ ["R_hip",388,705],["R_knee",363,965],["R_ankle",374,1166],
+ ["L_sh",656,422],["L_el",752,645],["L_wr",754,857],
+ ["L_hip",579,750],["L_knee",610,1012],["L_ankle",621,1353]
 ];
 let refPoints=originalRefPoints.map(([id,x,y])=>({id,x,y}));
 try{
@@ -353,6 +354,21 @@ $("widthOrig").onclick=()=>setWidth("orig");
 $("widthMid").onclick=()=>setWidth("mid");
 $("widthWide").onclick=()=>setWidth("wide");
 for(const id of ["refVisible","refMarkers","refAlpha","refZoom","refDX","refDY"])$(id).addEventListener("input",paint);
+$("refAuto").onclick=()=>{
+ const hd=refPoints.find(p=>p.id==="head"),pv=refPoints.find(p=>p.id==="pelvis");
+ const v=BONES.headOffset*CAM.h/(pv.y-hd.y),zoom=Math.max(.65,Math.min(1.65,v/.177));
+ const scale=.177*zoom;
+ $("refZoom").value=zoom.toFixed(2);
+ $("refDX").value=Math.round((490-pv.x)*scale);
+ $("refDY").value=Math.round((690-pv.y)*scale);
+ $("refStatus").textContent="По голове и тазу: масштаб "+zoom.toFixed(2)+"; X "+$("refDX").value+"; Y "+$("refDY").value+". Плечи/бедра сравнивай отдельно.";
+ paint();
+};
+$("refUserView").onclick=()=>{
+ $("refZoom").value="1.5";$("refDX").value="100";$("refDY").value="38";$("refAlpha").value=".6";
+ $("refStatus").textContent="Восстановлен присланный вид: масштаб 1,5; X +100; Y +38 (для просмотра, не для калибровки костей).";
+ paint();
+};
 $("refReset").onclick=()=>{refPoints=originalRefPoints.map(([id,x,y])=>({id,x,y}));try{localStorage.removeItem("diablo34-master-points-v1")}catch(e){}$("refStatus").textContent="Исходная разметка восстановлена";paint()};
 $("refCopy").onclick=async()=>{
  const data=JSON.stringify({source:"master 1024x1536",rig:"diablo-34 width-test",width:widthKey,align:refState(),points:refPoints},null,2);
