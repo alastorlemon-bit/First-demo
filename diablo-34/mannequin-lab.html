@@ -303,7 +303,19 @@ $("ne").onclick=()=>drive(-1);
 $("stop").onclick=stop;
 $("pause").onclick=()=>{if(s.anatomy){s.anatomy=false;s.paused=false}else s.paused=!s.paused;refreshButtons()};
 $("frame").onclick=()=>{s.anatomy=false;s.paused=true;s.lastDt=1/60;simulate(1/60);refreshButtons();paint();updateHUD()};
-$("anatomy").onclick=()=>{const on=!s.anatomy;init();s.anatomy=on;s.paused=on;refreshButtons();paint();updateHUD()};
+$("anatomy").onclick=()=>{
+ const on=!s.anatomy;init();s.anatomy=on;s.paused=on;
+ if(on){
+  // Чистая проверочная Т-поза: стопы под собственными тазобедренными суставами.
+  // Не влияет на обычную походку, опоры или CMU.
+  for(const l of legs){
+   const h=hip(l,0);
+   l.foot={x:h.x,y:h.y};l.from={...l.foot};l.to={...l.foot};l.last={...l.foot};
+   l.z=0;l.swing=false;l.oldKnee=null;
+  }
+ }
+ refreshButtons();paint();updateHUD();
+};
 $("reset").onclick=init;
 $("speed").oninput=e=>{s.speed=+e.target.value;$("speedValue").textContent=s.speed.toFixed(1)};
 
@@ -373,7 +385,7 @@ function simulate(dt){
 function pelvisZ(){
  // CMU: высота таза из mocap; свободная нога не должна её просаживать.
  // Старой походке, Т-позе и развороту оставлено ограничение по опоре.
- let z=s.mode==="cmu"&&!s.anatomy?mocapPose(s.phase)[0]:1.34+.035*Math.cos(TAU*s.phase*2);
+ let z=s.anatomy?1.63:(s.mode==="cmu"?mocapPose(s.phase)[0]:1.34+.035*Math.cos(TAU*s.phase*2));
  for(const l of legs)if(!l.swing&&(s.mode!=="cmu"||s.anatomy||s.reorient)){
   const h=hip(l,0),d=Math.hypot(h.x-l.foot.x,h.y-l.foot.y);
   const ankle=s.mode==="cmu"&&!s.anatomy ? .165 : .07;
