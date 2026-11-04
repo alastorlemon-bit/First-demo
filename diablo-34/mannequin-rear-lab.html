@@ -914,14 +914,15 @@ function spriteMatrix(part,start,end,tail=false){
  if(srcLen<1||dstLen<.01)return null;
  const ux=vx/srcLen,uy=vy/srcLen,angle=Math.atan2(dy,dx)+cfg.angle*Math.PI/180;
  const cs=Math.cos(angle),sn=Math.sin(angle),right=part.startsWith("right");
- const distant=sheetView==="rear"?!right:right;
+ const distant=part==="torso"?false:(sheetView==="rear"?!right:right);
  // У задних предплечий сохраняем расстояния между суставами.
  // Сужаем графику и отдельно уменьшаем ладонь ниже лучезапястного шарнира.
  const rearForearm=sheetView==="rear"&&part.endsWith("Forearm");
+ const rearTorso=sheetView==="rear"&&part==="torso";
  const handLength=rearForearm&&tail ? .75 : 1;
  const partWidth=rearForearm ? (tail ? .73 : .84) : 1;
- const along=(tail?ART_LENGTH[part]/srcLen*(distant ? .90 : 1)*handLength:dstLen/srcLen)*cfg.length/100;
- const across=ART_LENGTH[part]/srcLen*sheet.width*(distant ? .85 : 1)*partWidth*cfg.width/100;
+ const along=(tail?ART_LENGTH[part]/srcLen*(distant ? .90 : 1)*handLength:dstLen/srcLen)*cfg.length/100*(rearTorso?1.04:1);
+ const across=ART_LENGTH[part]/srcLen*sheet.width*(distant ? .85 : 1)*partWidth*cfg.width/100*(rearTorso?1.12:1);
  const skew=Math.tan(cfg.skew*Math.PI/180);
  function vec(x,y){
   const longitudinal=(x*ux+y*uy)*along+(-x*uy+y*ux)*across*skew;
@@ -1872,6 +1873,32 @@ function runRegressions(){
   Math.abs(rightRear.end.y-(pt1.y+rightFit.dy))<.0001&&
   Math.abs(rightFront.start.x-(pt0.x+rightFit.dx+3.5))<.0001&&
   Math.abs(rightFront.start.y-(pt0.y+rightFit.dy+1.5))<.0001});
+ // Геометрия торса проверяется с фиксированным атласом, независимо от
+ // сохранённых пользователем вариантов подгонки и загрузки изображений.
+ const originalSheet=sheet,originalFitData=fit.data,originalSpriteView=sheetView;
+ function torsoSpriteScale(view,boxWidth,boxHeight){
+  sheetView=view;
+  sheet={image:{naturalWidth:1024,naturalHeight:1536},
+   boxes:[{w:boxWidth,h:boxHeight}],assigned:{torso:0},width:1};
+  fit.data={torso:FIT_DEFAULT()};
+  const a={x:100,y:80},b={x:110,y:240},m=spriteMatrix("torso",a,b);
+  const marks=partAnchors("torso"),vx=(marks[1][0]-marks[0][0])*boxWidth;
+  const vy=(marks[1][1]-marks[0][1])*boxHeight,srcLen=Math.hypot(vx,vy);
+  const perpX=-vy/srcLen,perpY=vx/srcLen;
+  const width=Math.hypot(m.a*perpX+m.c*perpY,m.b*perpX+m.d*perpY);
+  const p0=spritePoint(m,marks[0][0]*boxWidth,marks[0][1]*boxHeight);
+  const p1=spritePoint(m,marks[1][0]*boxWidth,marks[1][1]*boxHeight);
+  return {width:width/(ART_LENGTH.torso/srcLen),
+   length:Math.hypot(p1.x-p0.x,p1.y-p0.y)/Math.hypot(b.x-a.x,b.y-a.y)};
+ }
+ const rearTorsoScale=torsoSpriteScale("rear",244,568);
+ const frontTorsoScale=torsoSpriteScale("front",274,520);
+ sheet=originalSheet;fit.data=originalFitData;sheetView=originalSpriteView;
+ results.push({test:"спина: торс шире +12%, длиннее +4%; передний без изменений",ok:
+  Math.abs(rearTorsoScale.width-1.12)<.0001&&
+  Math.abs(rearTorsoScale.length-1.04)<.0001&&
+  Math.abs(frontTorsoScale.width-1)<.0001&&
+  Math.abs(frontTorsoScale.length-1)<.0001});
  // Проба четырёх направлений: одно из двух исходных движений + зеркальная ось.
  const fourDirections=[];
  for(const name of ["SW","SE","NW","NE"]){
