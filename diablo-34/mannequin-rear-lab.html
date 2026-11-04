@@ -944,8 +944,8 @@ function spriteGraphicEndpoints(part,start,end){
  // Не трогаем текущие калибровки манекена, добавляем смещение сверху.
  const first={...start},last={...end};
  if(sheetView==="rear"){
-  // Плечевые края отводим наружу на 2.5 px; локти и колени остаются на местах.
-  if(part==="leftUpperArm")first.x+=1;
+  // Точки плечевых спрайтов подгоняем отдельно; локти и колени остаются на местах.
+  if(part==="leftUpperArm")first.x+=2.5;
   if(part==="leftThigh")first.x+=4;
   if(part==="rightUpperArm"){first.x-=.5;first.y+=2}
   if(part==="rightThigh"){first.x+=4;first.y-=4}
@@ -1851,8 +1851,8 @@ function runRegressions(){
  const rightFront=spriteGraphicEndpoints("rightUpperArm",pt0,pt1);
  const nearThighFront=spriteGraphicEndpoints("rightThigh",pt0,pt1);
  sheetView=previousSheetView;
- results.push({test:"NE: плечевой спрайт наружу, бедро без изменений",ok:
-  Math.abs(shRear.start.x-(pt0.x+shFit.dx+1))<.0001&&
+ results.push({test:"NE: левое плечо ближе к корпусу, бедро без изменений",ok:
+  Math.abs(shRear.start.x-(pt0.x+shFit.dx+2.5))<.0001&&
   Math.abs(thRear.start.x-(pt0.x+thFit.dx+4))<.0001&&
   Math.abs(shRear.end.x-(pt1.x+shFit.dx))<.0001&&
   Math.abs(thRear.end.x-(pt1.x+thFit.dx))<.0001&&
