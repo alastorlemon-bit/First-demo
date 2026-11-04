@@ -1600,6 +1600,13 @@ function renderFacing(){
 }
 function paint(){
  const rendered=renderFacing(),physicalTurn=s.turn,physicalMirror=s.mirror;
+ // Физическую диагностику считаем по реальному IK, независимо от маскировки поворота.
+ let physicalMetrics=null;
+ if(s.reorient&&!fit.active){
+  const physicalZ=pelvisZ();
+  for(const l of legs)ik(l,physicalZ);
+  physicalMetrics={pop:s.pop,stretch:s.stretch,knees:legs.map(l=>l.oldKnee)};
+ }
  s.turn=rendered.turn;s.mirror=rendered.mirror;
  useSheetView(s.turn<0?"rear":"front");
  W=canvas.clientWidth;H=canvas.clientHeight;if(!W||!H)return;
@@ -1646,6 +1653,10 @@ function paint(){
  ctx.restore();
  ctx.restore();
  s.turn=physicalTurn;s.mirror=physicalMirror;
+ if(physicalMetrics){
+  s.pop=physicalMetrics.pop;s.stretch=physicalMetrics.stretch;
+  legs.forEach((l,i)=>l.oldKnee=physicalMetrics.knees[i]);
+ }
  ctx.textAlign="left";ctx.font="11px system-ui";ctx.fillStyle="#bed5e0";
  ctx.fillText("X ↘ 36/18   Y ↙ −36/18",10,H-26);
  ctx.fillText("Мир: x "+worldPos.x.toFixed(2)+"  y "+worldPos.y.toFixed(2)+" | "+
