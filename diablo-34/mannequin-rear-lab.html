@@ -921,6 +921,7 @@ function spriteGraphicEndpoints(part,start,end){
   // Локоть и колено остаются на своих костях.
   if(part==="leftUpperArm")first.x+=3.5;
   if(part==="leftThigh")first.x+=4;
+  if(part==="rightUpperArm"){first.x-=3;first.y+=2}
  }
  if(sheetView==="front"){
   if(part==="torso"){first.x-=3.5;last.x-=3.5}
@@ -1686,9 +1687,12 @@ function runRegressions(){
  const shFit=fitConfig("leftUpperArm"),thFit=fitConfig("leftThigh");
  const shRear=spriteGraphicEndpoints("leftUpperArm",pt0,pt1);
  const thRear=spriteGraphicEndpoints("leftThigh",pt0,pt1);
+ const rightFit=fitConfig("rightUpperArm");
+ const rightRear=spriteGraphicEndpoints("rightUpperArm",pt0,pt1);
  sheetView="front";
  const shFront=spriteGraphicEndpoints("leftUpperArm",pt0,pt1);
  const thFront=spriteGraphicEndpoints("leftThigh",pt0,pt1);
+ const rightFront=spriteGraphicEndpoints("rightUpperArm",pt0,pt1);
  sheetView=previousSheetView;
  results.push({test:"NE: спрайты плеча и бедра ближе к корпусу",ok:
   Math.abs(shRear.start.x-(pt0.x+shFit.dx+3.5))<.0001&&
@@ -1697,6 +1701,13 @@ function runRegressions(){
   Math.abs(thRear.end.x-(pt1.x+thFit.dx))<.0001&&
   Math.abs(shFront.start.x-(pt0.x+shFit.dx-2.5))<.0001&&
   Math.abs(thFront.start.x-(pt0.x+thFit.dx))<.0001});
+ results.push({test:"NE: правое плечо ближе и ниже, локоть и фас не сдвинуты",ok:
+  Math.abs(rightRear.start.x-(pt0.x+rightFit.dx-3))<.0001&&
+  Math.abs(rightRear.start.y-(pt0.y+rightFit.dy+2))<.0001&&
+  Math.abs(rightRear.end.x-(pt1.x+rightFit.dx))<.0001&&
+  Math.abs(rightRear.end.y-(pt1.y+rightFit.dy))<.0001&&
+  Math.abs(rightFront.start.x-(pt0.x+rightFit.dx+3.5))<.0001&&
+  Math.abs(rightFront.start.y-(pt0.y+rightFit.dy+1.5))<.0001});
  s.mode=originalMode;s.speed=originalSpeed;widthKey=originalWidth;init();
  // Регрессия: при zoom<1 старый буфер должен стираться даже по краям холста.
  const originalZoom=fit.cameraZoom;
