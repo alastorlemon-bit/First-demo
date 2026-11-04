@@ -786,13 +786,16 @@ function previewSheet(){
   // Предустановка для листа 1536×1024; другие назначения можно изменить.
   // Атлас манекена 1024×1536: фиксированный анатомический набор.
   // Номера берутся из девяти прозрачных компонентов, отсортированных по Y/X.
-  const mannequinMap=guardMap(sheet.boxes,GUARD_FRONT_CELLS);
+  // Импорт произвольного листа не обязан повторять сетку тестовых атласов.
+  let guardPreset=null;
+  if(sheet.image.naturalWidth===1024&&sheet.image.naturalHeight===1536){
+   try{guardPreset=guardMap(sheet.boxes,sheetView==="rear"?GUARD_REAR_CELLS:GUARD_FRONT_CELLS)}
+   catch(error){guardPreset=null}
+  }
   if(Number.isInteger(sheet.assigned[id])&&sheet.assigned[id]>=0&&sheet.assigned[id]<sheet.boxes.length){
    select.value=String(sheet.assigned[id]);
-  }else if(sheetView==="rear"){
-   select.value=String(guardMap(sheet.boxes,GUARD_REAR_CELLS)[id]);
-  }else if(sheet.image.naturalWidth===1024&&sheet.image.naturalHeight===1536){
-   select.value=String(mannequinMap[id]);
+  }else if(guardPreset){
+   select.value=String(guardPreset[id]);
   }else{
    const expected={
     torso:[255,500],rightUpperArm:[560,251],leftUpperArm:[823,255],
@@ -818,7 +821,10 @@ function previewSheet(){
 }
 function setSheetImage(image){
  sheet.image=image;sheet.boxes=extractSheetPieces(image);
- if(sheet.boxes.length===9)sheet.assigned=guardMap(sheet.boxes,GUARD_FRONT_CELLS);
+ if(sheet.boxes.length===9){
+  try{sheet.assigned=guardMap(sheet.boxes,sheetView==="rear"?GUARD_REAR_CELLS:GUARD_FRONT_CELLS)}
+  catch(error){sheet.assigned={}}
+ }
  $("artMessage").dataset.boxes=JSON.stringify(sheet.boxes);
  $("artMessage").dataset.joints=JSON.stringify(measureTurquoise(image,sheet.boxes));
  $("spriteMode").checked=false;
@@ -925,16 +931,12 @@ function spriteMatrix(part,start,end,tail=false){
  const dstLen=Math.hypot(dx,dy);
  if(srcLen<1||dstLen<.01)return null;
  const ux=vx/srcLen,uy=vy/srcLen,angle=Math.atan2(dy,dx)+cfg.angle*Math.PI/180;
- const cs=Math.cos(angle),sn=Math.sin(angle),right=part.startsWith("right");
- const distant=part==="torso"?false:(sheetView==="rear"?!right:right);
- // У задних предплечий сохраняем расстояния между суставами.
- // Сужаем графику и отдельно уменьшаем ладонь ниже лучезапястного шарнира.
- const rearForearm=sheetView==="rear"&&part.endsWith("Forearm");
- const rearTorso=sheetView==="rear"&&part==="torso";
- const handLength=rearForearm&&tail ? (distant?1:.79) : 1;
- const partWidth=rearForearm ? (tail?(distant?.94:.75):.84) : 1;
- const along=(tail?ART_LENGTH[part]/srcLen*(distant ? .90 : 1)*handLength:dstLen/srcLen)*cfg.length/100*(rearTorso?1.04:1);
- const across=ART_LENGTH[part]/srcLen*sheet.width*(distant ? .85 : 1)*partWidth*cfg.width/100*(rearTorso?1.12:1);
+ const cs=Math.cos(angle),sn=Math.sin(angle);
+ // Манекенные множители заднего торса и кистей сюда не переносим:
+ // новый костюм уже нарисован в собственной перспективе для каждого вида.
+ // Ручная графическая подгонка остаётся в cfg, физический риг неизменен.
+ const along=(tail?ART_LENGTH[part]/srcLen:dstLen/srcLen)*cfg.length/100;
+ const across=ART_LENGTH[part]/srcLen*sheet.width*cfg.width/100;
  const skew=Math.tan(cfg.skew*Math.PI/180);
  function vec(x,y){
   const longitudinal=(x*ux+y*uy)*along+(-x*uy+y*ux)*across*skew;
@@ -1835,42 +1837,30 @@ function runRegressions(){
   Math.abs(fa.wrist.x-5.2)<.0001&&Math.abs(fa.wrist.y-71.5)<.0001});
  const previousSheetView=sheetView;
  const pt0={x:100,y:80},pt1={x:120,y:150};
- sheetView="rear";
- const shFit=fitConfig("leftUpperArm"),thFit=fitConfig("leftThigh");
- const shRear=spriteGraphicEndpoints("leftUpperArm",pt0,pt1);
- const thRear=spriteGraphicEndpoints("leftThigh",pt0,pt1);
- const rightFit=fitConfig("rightUpperArm");
- const rightRear=spriteGraphicEndpoints("rightUpperArm",pt0,pt1);
- const nearThighFit=fitConfig("rightThigh");
- const nearThighRear=spriteGraphicEndpoints("rightThigh",pt0,pt1);
- sheetView="front";
- const shFront=spriteGraphicEndpoints("leftUpperArm",pt0,pt1);
- const thFront=spriteGraphicEndpoints("leftThigh",pt0,pt1);
- const rightFront=spriteGraphicEndpoints("rightUpperArm",pt0,pt1);
- const nearThighFront=spriteGraphicEndpoints("rightThigh",pt0,pt1);
+ let isolatedOffsets=true,validAnatomy=true;
+ for(const view of ["front","rear"]){
+  sheetView=view;
+  for(const [part] of spriteNames){
+   const cfg=fitConfig(part),ends=spriteGraphicEndpoints(part,pt0,pt1);
+   isolatedOffsets=isolatedOffsets&&
+    Math.abs(ends.start.x-(pt0.x+cfg.dx))<.0001&&
+    Math.abs(ends.start.y-(pt0.y+cfg.dy))<.0001&&
+    Math.abs(ends.end.x-(pt1.x+cfg.dx))<.0001&&
+    Math.abs(ends.end.y-(pt1.y+cfg.dy))<.0001;
+   const anchors=GUARD_ANCHORS[view][part];
+   validAnatomy=validAnatomy&&Array.isArray(anchors)&&anchors.length===2&&
+    anchors.every(a=>a.length===2&&a.every(n=>Number.isFinite(n)&&n>=0&&n<=1))&&
+    Math.hypot(anchors[1][0]-anchors[0][0],anchors[1][1]-anchors[0][1])>.15;
+  }
+ }
  sheetView=previousSheetView;
- results.push({test:"NE: левое плечо ближе к корпусу, бедро без изменений",ok:
-  Math.abs(shRear.start.x-(pt0.x+shFit.dx+4))<.0001&&
-  Math.abs(thRear.start.x-(pt0.x+thFit.dx+4))<.0001&&
-  Math.abs(shRear.end.x-(pt1.x+shFit.dx))<.0001&&
-  Math.abs(thRear.end.x-(pt1.x+thFit.dx))<.0001&&
-  Math.abs(shFront.start.x-(pt0.x+shFit.dx-2.5))<.0001&&
-  Math.abs(thFront.start.x-(pt0.x+thFit.dx))<.0001});
- results.push({test:"NE: правое бедро от корпуса и выше, нейтральное колено по умолчанию",ok:
+ results.push({test:"стражник: поправки манекена не перенесены",ok:isolatedOffsets});
+ results.push({test:"стражник: 9 пар анатомических якорей на каждом виде",ok:validAnatomy});
+ results.push({test:"стражник: плечи и колено заднего вида",ok:
   !$("nearRightMocap").defaultChecked&&
-  Math.abs(nearThighRear.start.x-(pt0.x+nearThighFit.dx+4))<.0001&&
-  Math.abs(nearThighRear.start.y-(pt0.y+nearThighFit.dy-4))<.0001&&
-  Math.abs(nearThighRear.end.x-(pt1.x+nearThighFit.dx))<.0001&&
-  Math.abs(nearThighRear.end.y-(pt1.y+nearThighFit.dy))<.0001&&
-  Math.abs(nearThighFront.start.x-(pt0.x+nearThighFit.dx))<.0001&&
-  Math.abs(nearThighFront.start.y-(pt0.y+nearThighFit.dy))<.0001});
- results.push({test:"NE: правое плечо наружу и ниже, локоть и фас не сдвинуты",ok:
-  Math.abs(rightRear.start.x-(pt0.x+rightFit.dx-.5))<.0001&&
-  Math.abs(rightRear.start.y-(pt0.y+rightFit.dy+2))<.0001&&
-  Math.abs(rightRear.end.x-(pt1.x+rightFit.dx))<.0001&&
-  Math.abs(rightRear.end.y-(pt1.y+rightFit.dy))<.0001&&
-  Math.abs(rightFront.start.x-(pt0.x+rightFit.dx+3.5))<.0001&&
-  Math.abs(rightFront.start.y-(pt0.y+rightFit.dy+1.5))<.0001});
+  [TORSO_SHOULDERS.right,TORSO_SHOULDERS.left,REAR_SHOULDERS.right,REAR_SHOULDERS.left]
+   .every(a=>a.every(n=>n>=0&&n<=1))&&
+  REAR_SHOULDERS.left[0]<REAR_SHOULDERS.right[0]});
  // Геометрия торса проверяется с фиксированным атласом, независимо от
  // сохранённых пользователем вариантов подгонки и загрузки изображений.
  const originalSheet=sheet,originalFitData=fit.data,originalSpriteView=sheetView;
@@ -1892,9 +1882,9 @@ function runRegressions(){
  const rearTorsoScale=torsoSpriteScale("rear",244,568);
  const frontTorsoScale=torsoSpriteScale("front",274,520);
  sheet=originalSheet;fit.data=originalFitData;sheetView=originalSpriteView;
- results.push({test:"спина: торс шире +12%, длиннее +4%; передний без изменений",ok:
-  Math.abs(rearTorsoScale.width-1.12)<.0001&&
-  Math.abs(rearTorsoScale.length-1.04)<.0001&&
+ results.push({test:"стражник: торсы без масштабов манекена",ok:
+  Math.abs(rearTorsoScale.width-1)<.0001&&
+  Math.abs(rearTorsoScale.length-1)<.0001&&
   Math.abs(frontTorsoScale.width-1)<.0001&&
   Math.abs(frontTorsoScale.length-1)<.0001});
  function handSpriteScale(view,part){
@@ -1918,12 +1908,26 @@ function runRegressions(){
  const nearFrontHand=handSpriteScale("front","leftForearm");
  const farFrontHand=handSpriteScale("front","rightForearm");
  sheet=originalSheet;fit.data=originalFitData;sheetView=originalSpriteView;
- results.push({test:"спина: дальняя кисть ещё крупнее, ближняя и запястья неизменны",ok:
-  Math.abs(nearRearHand.width-.75)<.0001&&Math.abs(nearRearHand.length-.79)<.0001&&
-  Math.abs(farRearHand.width-.799)<.0001&&Math.abs(farRearHand.length-.9)<.0001&&
+ results.push({test:"стражник: размер кистей и крепление запястий",ok:
+  Math.abs(nearRearHand.width-1)<.0001&&Math.abs(nearRearHand.length-1)<.0001&&
+  Math.abs(farRearHand.width-1)<.0001&&Math.abs(farRearHand.length-1)<.0001&&
   Math.abs(nearFrontHand.width-1)<.0001&&Math.abs(nearFrontHand.length-1)<.0001&&
-  Math.abs(farFrontHand.width-.85)<.0001&&Math.abs(farFrontHand.length-.9)<.0001&&
+  Math.abs(farFrontHand.width-1)<.0001&&Math.abs(farFrontHand.length-1)<.0001&&
   [nearRearHand,farRearHand,nearFrontHand,farFrontHand].every(x=>x.wristError<.0001)});
+ const bothSheets=[frontSheet,rearSheet],validAtlases=bothSheets.every(item=>
+  item.image&&item.image.naturalWidth===1024&&item.image.naturalHeight===1536&&item.boxes.length===9);
+ results.push({test:"стражник: два атласа, по 9 прозрачных частей",ok:validAtlases});
+ results.push({test:"стражник: уникальные назначения 18 частей",ok:bothSheets.every(item=>
+  spriteNames.every(([id])=>Number.isInteger(item.assigned[id])&&item.assigned[id]>=0&&item.assigned[id]<9)&&
+  new Set(Object.values(item.assigned)).size===9)});
+ let transparentBg=validAtlases;
+ if(validAtlases)for(const item of bothSheets){
+  const alphaCanvas=document.createElement("canvas");alphaCanvas.width=1;alphaCanvas.height=1;
+  const alphaCtx=alphaCanvas.getContext("2d",{willReadFrequently:true});
+  alphaCtx.drawImage(item.image,0,0,1,1,0,0,1,1);
+  transparentBg=transparentBg&&alphaCtx.getImageData(0,0,1,1).data[3]<35;
+ }
+ results.push({test:"стражник: прозрачность фона атласов",ok:transparentBg});
  // Проба четырёх направлений: одно из двух исходных движений + зеркальная ось.
  const fourDirections=[];
  for(const name of ["SW","SE","NW","NE"]){
@@ -1996,9 +2000,12 @@ function runRegressions(){
 }
 init();
 if(window.location&&/(?:\\?|&)qa=1(?:&|$)/.test(window.location.search)){
- const results=runRegressions(),passed=results.filter(r=>r.ok).length;
- $("note").textContent="QA "+passed+"/"+results.length+": "+
-  results.map(r=>(r.ok?"✓":"✗")+r.test).join(" · ");
+ // Атласы загружаются отдельно; запускать графические проверки после load.
+ window.addEventListener("load",()=>{
+  const results=runRegressions(),passed=results.filter(r=>r.ok).length;
+  $("note").textContent="QA "+passed+"/"+results.length+": "+
+   results.map(r=>(r.ok?"✓":"✗")+r.test).join(" · ");
+ });
 }
 requestAnimationFrame(tick);
 </script>
