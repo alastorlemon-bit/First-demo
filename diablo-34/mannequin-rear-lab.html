@@ -146,7 +146,7 @@ body.fitEditing #fitToggle{background:#236b77}
 <div id="options">
 <label id="speedLabel">Скорость <output id="speedValue">1.0</output><input id="speed" type="range" min="0.6" max="1.5" step="0.1" value="1.0"></label>
 <label id="rigLabel"><input id="rig" type="checkbox" checked> Кости и IK</label>
-<label id="nearRightKneeLabel"><input id="nearRightMocap" type="checkbox"> Ближнее правое колено (спина): <span id="nearRightKneeState">нейтральное</span></label>
+<label id="nearRightKneeLabel"><input id="nearRightMocap" type="checkbox"> Ближнее <span id="nearKneeSide">правое</span> колено (спина): <span id="nearRightKneeState">нейтральное</span></label>
 </div>
 <div id="meters">
 <div class="meter"><span>FOOT SLIDE</span><b class="ok" id="slide">0.000</b></div>
@@ -282,6 +282,10 @@ let spriteBlendAlpha=1,captureMorph=null;
 // Игровой путь поверх неизменённой локальной походки: Y = SW/NE, X = SE/NW.
 const worldPos={x:0,y:0};
 const HEADINGS=Object.freeze({SW:{dir:1,mirror:false},SE:{dir:1,mirror:true},NW:{dir:-1,mirror:true},NE:{dir:-1,mirror:false}});
+// Зеркало превращает исходную левую конечность в анатомически правую и наоборот.
+// В редакторе подгонки отражение отключено: там показываем исходные стороны.
+function anatomicalLabel(l){return s.mirror&&!fit.active?(l.id==="П"?"Л":"П"):l.id}
+function anatomicalColor(l){return anatomicalLabel(l)==="П"?"#ffad64":"#59d9ff"}
 function routeWorld(delta){if(s.mirror)worldPos.x+=delta;else worldPos.y+=delta}
 function driveHeading(name){
  if(s.reorient)return;
@@ -305,6 +309,7 @@ function hip(l,z){return {x:s.x+pelvisSway()-s.turn*l.side*widthPreset().hip,y:s
 function refreshButtons(){
  $("cmu").classList.toggle("active",s.mode==="cmu");
  $("classic").classList.toggle("active",s.mode==="classic");
+ $("nearKneeSide").textContent=s.mirror&&!fit.active?"левое":"правое";
  for(const name of Object.keys(HEADINGS))
   $(name.toLowerCase()).classList.toggle("active",s.dir===HEADINGS[name].dir&&s.heading===name);
  $("stop").classList.toggle("active",s.dir===0);
@@ -1443,6 +1448,7 @@ function rearForeshortenArm(shoulder,elbow,wrist){
 function segment(l,z){
  const neutralNearRight=sheetView==="rear"&&l.id==="П"&&!$("nearRightMocap").checked;
  const q=ik(l,z,neutralNearRight),A=P(q.H.x,q.H.y,q.H.z),F=P(q.F.x,q.F.y,q.F.z);
+ const color=anatomicalColor(l);
  const far=(s.turn*l.side)>0;
  let K=P(q.K.x,q.K.y,q.K.z);
  if(sheetView==="rear"&&far)K=rearForeshortenKnee(A,K,F);
@@ -1457,25 +1463,26 @@ function segment(l,z){
    drawSpriteBetween(side+"Shin",K,F);
   }
  }else{
-  bone(A,K,l.color,12);bone(K,F,l.color,10);
-  dot(K,7,l.color);dot(A,6,l.color);
+  bone(A,K,color,12);bone(K,F,color,10);
+  dot(K,7,color);dot(A,6,color);
  }
  if(captureMorph){ctx.globalAlpha=1;return}
  const sole=footSole(l),heel=P(sole.heel.x,sole.heel.y,sole.heel.z),
   toe=P(sole.toe.x,sole.toe.y,sole.toe.z),mid=P(sole.mid.x,sole.mid.y,sole.mid.z);
- if(!artEnabled()){bone(F,mid,l.color,7);bone(heel,toe,l.color,9)}
+ if(!artEnabled()){bone(F,mid,color,7);bone(heel,toe,color,9)}
  ctx.globalAlpha=spriteBlendAlpha;
  if($("rig").checked){
   line(A,K,"#eefaff",1.25);line(K,F,"#eefaff",1.25);
   dot(K,2,"#17212c");dot(F,3,"#f5fbff");
  }
- ctx.font="bold 12px system-ui";ctx.textAlign="left";ctx.fillStyle=l.color;
+ ctx.font="bold 12px system-ui";ctx.textAlign="left";ctx.fillStyle=color;
  if(s.mirror&&!fit.active){
   ctx.save();ctx.translate(F.x-9,F.y-7);ctx.scale(-1,1);
-  ctx.fillText(l.id,0,0);ctx.restore();
- }else ctx.fillText(l.id,F.x+9,F.y-7);
+  ctx.fillText(anatomicalLabel(l),0,0);ctx.restore();
+ }else ctx.fillText(anatomicalLabel(l),F.x+9,F.y-7);
 }
 function arm(l,z){
+ const color=anatomicalColor(l);
  const Sh={x:s.x+pelvisSway()*.28-s.turn*l.side*widthPreset().shoulder,y:s.y,z:z+BONES.torso};
  let E,Hand;
  if(s.anatomy){
@@ -1532,7 +1539,7 @@ function arm(l,z){
   drawSpriteBetween(side+"UpperArm",a,b);
   drawSpriteBetween(side+"Forearm",b,d);
  }else{
-  bone(a,b,l.color,9);bone(b,d,l.color,8);dot(b,5,l.color);dot(d,5,l.color);
+  bone(a,b,color,9);bone(b,d,color,8);dot(b,5,color);dot(d,5,color);
  }
  ctx.globalAlpha=spriteBlendAlpha;
  if(captureMorph)return;
@@ -1541,8 +1548,8 @@ function arm(l,z){
   dot(b,2,"#142331");
  }
  if(s.anatomy){
-  ctx.font="bold 11px system-ui";ctx.textAlign="center";ctx.fillStyle=l.color;
-  ctx.fillText(l.id,d.x,d.y-12);
+  ctx.font="bold 11px system-ui";ctx.textAlign="center";ctx.fillStyle=color;
+  ctx.fillText(anatomicalLabel(l),d.x,d.y-12);
  }
 }
 function drawGrid(){
@@ -1562,17 +1569,18 @@ function groundMarks(){
  line({x:anchor.x-7,y:anchor.y},{x:anchor.x+7,y:anchor.y},"#76e8aa",2);
  line({x:anchor.x,y:anchor.y-7},{x:anchor.x,y:anchor.y+7},"#76e8aa",2);
  for(const l of legs){
+  const color=anatomicalColor(l);
   const g=P(l.foot.x,l.foot.y);
-  ctx.strokeStyle=l.color;ctx.lineWidth=1.8;
+  ctx.strokeStyle=color;ctx.lineWidth=1.8;
   ctx.setLineDash(l.swing?[3,3]:[]);
   ctx.beginPath();ctx.ellipse(g.x,g.y,10,4,0,0,TAU);ctx.stroke();
   ctx.setLineDash([]);
   if(l.swing){
    const a=P(l.from.x,l.from.y),b=P(l.to.x,l.to.y);
-   ctx.strokeStyle=l.color+"99";ctx.setLineDash([3,4]);ctx.beginPath();
+   ctx.strokeStyle=color+"99";ctx.setLineDash([3,4]);ctx.beginPath();
    ctx.moveTo(a.x,a.y);ctx.quadraticCurveTo((a.x+b.x)/2,(a.y+b.y)/2-20,b.x,b.y);
-   ctx.stroke();ctx.setLineDash([]);dot(b,3,l.color);
-  }else dot(g,3,l.color);
+   ctx.stroke();ctx.setLineDash([]);dot(b,3,color);
+  }else dot(g,3,color);
  }
 }
 function torso(z){
@@ -1728,7 +1736,7 @@ function paint(){
  ctx.fillText("X ↘ 36/18   Y ↙ −36/18",10,H-26);
  ctx.fillText("Мир: x "+worldPos.x.toFixed(2)+"  y "+worldPos.y.toFixed(2)+" | "+
   (s.dir!==0?s.heading:"СТОП"),10,H-10);
- const la=s.anatomy?"Т-поза · симметрия":legs.map(l=>l.id+": "+(l.swing?"перенос":"опора")).join("  •  ");
+ const la=s.anatomy?"Т-поза · симметрия":legs.map(l=>anatomicalLabel(l)+": "+(l.swing?"перенос":"опора")).join("  •  ");
  ctx.textAlign="right";ctx.fillStyle="#edf6ff";ctx.fillText(la,W-8,16);
 }
 function metric(id,value,bad){$(id).textContent=value;$(id).className=bad?"warn":"ok"}
@@ -1878,6 +1886,24 @@ function runRegressions(){
   );
  }
  results.push({test:"четыре направления: перемещение по двум осям",ok:fourDirections.every(Boolean)});
+ // SE/NW отражают всю фигуру: экранное право/лево и обозначения должны
+ // оставаться анатомическими, в том числе цвета и подпись ближнего колена.
+ let handedness=true;
+ for(const name of ["SW","SE","NW","NE"]){
+  s.mode="cmu";init();driveHeading(name);paint();
+  const points=legs.map(l=>({leg:l,
+   x:s.mirror&&!fit.active?W-P(hip(l,0).x,hip(l,0).y).x:P(hip(l,0).x,hip(l,0).y).x}));
+  points.sort((a,b)=>a.x-b.x);
+  const expectedLeft=s.turn>0?"П":"Л";
+  const label=l=>typeof anatomicalLabel==="function"?anatomicalLabel(l):l.id;
+  const color=l=>typeof anatomicalColor==="function"?anatomicalColor(l):l.color;
+  handedness=handedness&&label(points[0].leg)===expectedLeft&&
+   label(points[1].leg)!==expectedLeft&&
+   color(points[0].leg)===(expectedLeft==="П"?"#ffad64":"#59d9ff")&&
+   color(points[1].leg)===(expectedLeft==="П"?"#59d9ff":"#ffad64")&&
+   $("nearRightKneeLabel").textContent.includes(s.mirror?"левое":"правое");
+ }
+ results.push({test:"четыре ракурса: анатомические Л/П, цвета и ближнее колено",ok:handedness});
  // Четыре ракурса переключаются на нажатие: один готовый набор спрайтов, без задержки.
  let immediate=true,oneView=true;
  for(const [from,to] of [["SW","NE"],["SW","NW"],["SE","NE"],["NE","SW"],["NE","SE"],["NW","SW"]]){
