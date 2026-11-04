@@ -799,8 +799,9 @@ function spriteGraphicEndpoints(part,start,end){
  // Не трогаем текущие калибровки манекена, добавляем смещение сверху.
  const first={...start},last={...end};
  if(part==="torso"){first.x-=3.5;last.x-=3.5}
- if(part==="leftShin"){last.x-=3.5;last.y-=6.5}
+ if(part==="leftShin"){last.x-=10;last.y-=10.5}
  if(part==="leftUpperArm")first.x-=2.5;
+ if(part==="rightUpperArm"){first.x+=3.5;first.y-=2}
  const cfg=fitConfig(part);
  first.x+=cfg.dx;first.y+=cfg.dy;
  last.x+=cfg.dx;last.y+=cfg.dy;
