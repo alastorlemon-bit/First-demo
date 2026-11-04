@@ -1396,9 +1396,10 @@ function rearForeshortenKnee(hip,knee,ankle){
  return {x:mix(knee.x,hip.x+dx*t,.32),y:mix(knee.y,hip.y+dy*t,.32)};
 }
 function rearForeshortenArm(shoulder,elbow,wrist){
- const scale=.78;
- return {elbow:{x:mix(shoulder.x,elbow.x,scale),y:mix(shoulder.y,elbow.y,scale)},
-  wrist:{x:mix(shoulder.x,wrist.x,scale),y:mix(shoulder.y,wrist.y,scale)}};
+ const upperScale=.78,forearmScale=.65;
+ const e={x:mix(shoulder.x,elbow.x,upperScale),y:mix(shoulder.y,elbow.y,upperScale)};
+ return {elbow:e,wrist:{x:e.x+(wrist.x-elbow.x)*forearmScale,
+  y:e.y+(wrist.y-elbow.y)*forearmScale}};
 }
 function segment(l,z){
  const q=ik(l,z),A=P(q.H.x,q.H.y,q.H.z),F=P(q.F.x,q.F.y,q.F.z);
@@ -1672,7 +1673,7 @@ function runRegressions(){
   Math.hypot(fk.x,fk.y-100)<Math.hypot(k0.x,k0.y-100)});
  results.push({test:"NE: локоть и запястье дальней руки",ok:
   Math.abs(fa.elbow.x-31.2)<.0001&&Math.abs(fa.elbow.y-39)<.0001&&
-  Math.abs(fa.wrist.y-78)<.0001});
+  Math.abs(fa.wrist.x-5.2)<.0001&&Math.abs(fa.wrist.y-71.5)<.0001});
  s.mode=originalMode;s.speed=originalSpeed;widthKey=originalWidth;init();
  // Регрессия: при zoom<1 старый буфер должен стираться даже по краям холста.
  const originalZoom=fit.cameraZoom;
