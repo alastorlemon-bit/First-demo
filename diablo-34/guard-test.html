@@ -871,17 +871,17 @@ const ART_ANCHORS=Object.freeze({
 const GUARD_ANCHORS=Object.freeze({
  front:Object.freeze({
   torso:[[.48,.20],[.49,.92]],
-  rightUpperArm:[[.55,.16],[.37,.88]],rightForearm:[[.64,.10],[.36,.61]],
-  leftUpperArm:[[.50,.16],[.43,.89]],leftForearm:[[.54,.10],[.56,.62]],
-  rightThigh:[[.51,.09],[.52,.94]],leftThigh:[[.51,.09],[.55,.94]],
-  rightShin:[[.57,.10],[.57,.73]],leftShin:[[.55,.10],[.53,.74]]
+  rightUpperArm:[[.55,.16],[.245,.864]],rightForearm:[[.745,.121],[.36,.61]],
+  leftUpperArm:[[.50,.16],[.635,.898]],leftForearm:[[.411,.101],[.56,.62]],
+  rightThigh:[[.51,.09],[.384,.940]],leftThigh:[[.51,.09],[.603,.939]],
+  rightShin:[[.634,.10],[.57,.73]],leftShin:[[.595,.10],[.53,.74]]
  }),
  rear:Object.freeze({
   torso:[[.49,.22],[.51,.94]],
-  rightUpperArm:[[.43,.13],[.74,.90]],rightForearm:[[.27,.11],[.50,.59]],
-  leftUpperArm:[[.58,.16],[.35,.89]],leftForearm:[[.61,.11],[.40,.60]],
-  rightThigh:[[.53,.09],[.55,.94]],leftThigh:[[.53,.09],[.49,.94]],
-  rightShin:[[.50,.10],[.50,.73]],leftShin:[[.47,.10],[.48,.74]]
+  rightUpperArm:[[.43,.13],[.726,.903]],rightForearm:[[.250,.113],[.50,.59]],
+  leftUpperArm:[[.58,.16],[.260,.879]],leftForearm:[[.712,.124],[.40,.60]],
+  rightThigh:[[.53,.09],[.380,.941]],leftThigh:[[.53,.09],[.334,.938]],
+  rightShin:[[.399,.10],[.50,.73]],leftShin:[[.460,.10],[.48,.74]]
  })
 });
 // Масштаб толщины задан по двум отдельным атласам стражника.
@@ -1463,7 +1463,7 @@ function segment(l,z){
  ctx.globalAlpha=(far?.66:1)*spriteBlendAlpha;
  if(artEnabled()){
   const side=l.id==="П"?"right":"left";
-  if(l.id==="Л"){
+  if(sheetView==="rear"||l.id==="Л"){
    drawSpriteBetween(side+"Shin",K,F);
    drawSpriteBetween(side+"Thigh",A,K);
   }else{
@@ -1934,6 +1934,40 @@ function runRegressions(){
   ["front","rear"].every(view=>["right","left"].every(side=>
    widthByAtlas(view,side+"Forearm")<widthByAtlas(view,side+"UpperArm")*.85&&
    widthByAtlas(view,side+"Shin")<widthByAtlas(view,side+"Thigh")*1.05))});
+ // Проверяем реальные альфа-силуэты двух атласов, а не только совпадение
+ // математических концов костей. Шов должен попадать в центр обеих деталей.
+ const jointPixels={};
+ for(const [view,sh] of [["front",frontSheet],["rear",rearSheet]]){
+  const c=document.createElement("canvas");c.width=sh.image.naturalWidth;c.height=sh.image.naturalHeight;
+  const g=c.getContext("2d",{willReadFrequently:true});g.drawImage(sh.image,0,0);
+  jointPixels[view]=g.getImageData(0,0,c.width,c.height).data;
+ }
+ function artJointCenter(view,part,end){
+  const sh=view==="rear"?rearSheet:frontSheet,box=sh.boxes[sh.assigned[part]];
+  const a=GUARD_ANCHORS[view][part],sx=a[0][0]*box.w,sy=a[0][1]*box.h;
+  const dx=(a[1][0]-a[0][0])*box.w,dy=(a[1][1]-a[0][1])*box.h;
+  const len=Math.hypot(dx,dy),nx=-dy/len,ny=dx/len;
+  const pixels=jointPixels[view],stride=sh.image.naturalWidth;
+  let sum=0,mass=0;
+  for(let along=-.035;along<=.035;along+=.012)for(let offset=-120;offset<=120;offset+=2){
+   const t=(end?.92:.08)+along;
+   const xx=Math.round(sx+dx*t+offset*nx),yy=Math.round(sy+dy*t+offset*ny);
+   if(xx<0||xx>=box.w||yy<0||yy>=box.h)continue;
+   const alpha=pixels[((box.y+yy)*stride+box.x+xx)*4+3];
+   if(alpha<170)continue;
+   sum+=alpha*offset;mass+=alpha;
+  }
+  return mass?sum/mass*ART_LENGTH[part]/len*(GUARD_ART_WIDTH[view][part]||1):Infinity;
+ }
+ let elbowError=0,kneeError=0;
+ for(const view of ["front","rear"])for(const side of ["left","right"]){
+  elbowError=Math.max(elbowError,Math.abs(
+   artJointCenter(view,side+"UpperArm",true)-artJointCenter(view,side+"Forearm",false)));
+  kneeError=Math.max(kneeError,Math.abs(
+   artJointCenter(view,side+"Thigh",true)-artJointCenter(view,side+"Shin",false)));
+ }
+ results.push({test:"стражник: центр рукава совпадает в локте",ok:elbowError<4});
+ results.push({test:"стражник: центр штанины совпадает в колене",ok:kneeError<4});
  const bothSheets=[frontSheet,rearSheet],validAtlases=bothSheets.every(item=>
   item.image&&item.image.naturalWidth===1024&&item.image.naturalHeight===1536&&item.boxes.length===9);
  results.push({test:"стражник: два атласа, по 9 прозрачных частей",ok:validAtlases});
@@ -1975,6 +2009,19 @@ function runRegressions(){
   }
  }finally{segment=baseSegment;torso=baseTorso}
  results.push({test:"спина NE/NW: ближняя нога под корпусом",ok:rearLegUnderTorso});
+ // В обоих задних направлениях голени обеих ног должны уходить под бедра.
+ const baseSpriteDraw=drawSpriteBetween;
+ let rearKneesCovered=true;
+ try{
+  drawSpriteBetween=function(part,...args){layerTrace.push(part);return baseSpriteDraw(part,...args)};
+  for(const heading of ["NE","NW"]){
+   s.mode="cmu";init();driveHeading(heading);layerTrace=[];paint();
+   rearKneesCovered=rearKneesCovered&&["right","left"].every(side=>
+    layerTrace.indexOf(side+"Shin")>=0&&
+    layerTrace.indexOf(side+"Shin")<layerTrace.indexOf(side+"Thigh"));
+  }
+ }finally{drawSpriteBetween=baseSpriteDraw}
+ results.push({test:"спина NE/NW: обе голени под бедрами",ok:rearKneesCovered});
  // SE/NW отражают всю фигуру: экранное право/лево и обозначения должны
  // оставаться анатомическими, в том числе цвета и подпись ближнего колена.
  let handedness=true;
