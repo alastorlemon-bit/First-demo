@@ -278,7 +278,7 @@ function setWidth(k){widthKey=k;refreshButtons();paint();fitSave()}
 
 const legs=[{id:"П",side:1,off:0,color:"#ffad64"},{id:"Л",side:-1,off:.5,color:"#59d9ff"}];
 const s={x:0,y:0,phase:0,dir:0,face:1,turn:1,vel:0,speed:1,paused:false,anatomy:false,mode:"cmu",reorient:null,slide:0,pop:0,stretch:0,limp:null,heading:"SW",mirror:false};
-let spriteBlendAlpha=1;
+let spriteBlendAlpha=1,captureMorph=null;
 // Игровой путь поверх неизменённой локальной походки: Y = SW/NE, X = SE/NW.
 const worldPos={x:0,y:0};
 const HEADINGS=Object.freeze({SW:{dir:1,mirror:false},SE:{dir:1,mirror:true},NW:{dir:-1,mirror:true},NE:{dir:-1,mirror:false}});
@@ -971,6 +971,12 @@ function drawSpriteBetween(part,start,end){
  const m=spriteMatrix(part,start,end);
  if(!m)return;
  const split=part.endsWith("Forearm")||part.endsWith("Shin");
+ if(captureMorph){
+  captureMorph.push({key:part+":0",part,piece:0,m,image:sheet.image,alpha:ctx.globalAlpha});
+  if(split){const tail=spriteMatrix(part,start,end,true);
+   if(tail)captureMorph.push({key:part+":1",part,piece:1,m:tail,image:sheet.image,alpha:ctx.globalAlpha})}
+  return;
+ }
  ctx.save();
  ctx.transform(m.a,m.b,m.c,m.d,m.e,m.f);
  if(split)spriteHalfClip(m.bx,m.by,m.ux,m.uy,false);
@@ -1451,6 +1457,7 @@ function segment(l,z){
   bone(A,K,l.color,12);bone(K,F,l.color,10);
   dot(K,7,l.color);dot(A,6,l.color);
  }
+ if(captureMorph){ctx.globalAlpha=1;return}
  const sole=footSole(l),heel=P(sole.heel.x,sole.heel.y,sole.heel.z),
   toe=P(sole.toe.x,sole.toe.y,sole.toe.z),mid=P(sole.mid.x,sole.mid.y,sole.mid.z);
  if(!artEnabled()){bone(F,mid,l.color,7);bone(heel,toe,l.color,9)}
@@ -1525,6 +1532,7 @@ function arm(l,z){
   bone(a,b,l.color,9);bone(b,d,l.color,8);dot(b,5,l.color);dot(d,5,l.color);
  }
  ctx.globalAlpha=spriteBlendAlpha;
+ if(captureMorph)return;
  if($("rig").checked){
   line(a,b,"#f4fbff",1);line(b,d,"#f4fbff",1);
   dot(b,2,"#142331");
@@ -1583,6 +1591,7 @@ function torso(z){
   ctx.strokeStyle="#263a43";ctx.lineWidth=5;ctx.beginPath();
   ctx.arc(head.x,head.y,14,Math.PI*1.08,Math.PI*1.96);ctx.stroke();
  }
+ if(captureMorph)return;
  if($("rig").checked){
   line(pelvis,P(shoulderX,s.y,z+BONES.torso),"#eaf7ff",1);dot(pelvis,3,"#9beac8");
  }
@@ -1598,6 +1607,66 @@ function renderTurnLayers(){
  if(fade>=1)return [second];
  first.alpha=1-fade;second.alpha=fade;
  return [first,second];
+}
+// Короткий аффинный морф деталей по их исходным авторским матрицам.
+function captureSpritePose(turn,mirror){
+ s.turn=turn;s.mirror=mirror;useSheetView(turn<0?"rear":"front");
+ captureMorph=[];
+ ctx.save();const z=pelvisZ();
+ const order=legs.slice().sort((a,b)=>P(hip(a,0).x,hip(a,0).y).y-P(hip(b,0).x,hip(b,0).y).y);
+ segment(order[0],z);arm(order[0],z);
+ if(order[1].id==="Л")segment(order[1],z);
+ torso(z);if(order[1].id!=="Л")segment(order[1],z);arm(order[1],z);
+ ctx.restore();const items=captureMorph;captureMorph=null;return items;
+}
+function normalizedMorphMatrix(rec,mirror){
+ const m=rec.m,w=m.box.w,h=m.box.h,flip=mirror?-1:1;
+ return {a:flip*m.a*w,b:m.b*w,c:flip*m.c*h,d:m.d*h,
+  e:mirror?W-m.e:m.e,f:m.f};
+}
+function blendMorphMatrix(a,b,t,uvA=null,uvB=null){
+ const decompose=v=>{
+  const angle=Math.atan2(v.b,v.a),width=Math.hypot(v.a,v.b),ca=Math.cos(angle),sa=Math.sin(angle);
+  return {angle,width,skew:v.c*ca+v.d*sa,height:v.d*ca-v.c*sa};
+ };
+ const p=decompose(a),q=decompose(b);
+ let diff=q.angle-p.angle;
+ while(diff>Math.PI)diff-=TAU;
+ while(diff< -Math.PI)diff+=TAU;
+ const angle=p.angle+diff*t,ca=Math.cos(angle),sa=Math.sin(angle);
+ const w=mix(p.width,q.width,t),h=mix(p.height,q.height,t),skew=mix(p.skew,q.skew,t);
+ const matrix={a:w*ca,b:w*sa,c:skew*ca-h*sa,d:skew*sa+h*ca,
+  e:mix(a.e,b.e,t),f:mix(a.f,b.f,t)};
+ if(uvA&&uvB){
+  const pivotA={x:a.a*uvA.u+a.c*uvA.v+a.e,y:a.b*uvA.u+a.d*uvA.v+a.f};
+  const pivotB={x:b.a*uvB.u+b.c*uvB.v+b.e,y:b.b*uvB.u+b.d*uvB.v+b.f};
+  const u=mix(uvA.u,uvB.u,t),v=mix(uvA.v,uvB.v,t);
+  matrix.e=mix(pivotA.x,pivotB.x,t)-matrix.a*u-matrix.c*v;
+  matrix.f=mix(pivotA.y,pivotB.y,t)-matrix.b*u-matrix.d*v;
+ }
+ return matrix;
+}
+function drawMorphPiece(rec,matrix,opacity){
+ if(!rec||!rec.image||opacity<=0)return;
+ const m=rec.m,box=m.box;ctx.save();ctx.globalAlpha=opacity;
+ ctx.transform(matrix.a/box.w,matrix.b/box.w,matrix.c/box.h,matrix.d/box.h,matrix.e,matrix.f);
+ if(rec.piece===1||rec.part.endsWith("Forearm")||rec.part.endsWith("Shin"))
+  spriteHalfClip(m.bx,m.by,m.ux,m.uy,rec.piece===1);
+ ctx.drawImage(rec.image,box.x,box.y,box.w,box.h,0,0,box.w,box.h);
+ ctx.restore();
+}
+function drawMorphTurn(t,from,to,mirror){
+ const a=captureSpritePose(from,mirror),b=captureSpritePose(to,mirror);
+ const am=new Map(a.map(item=>[item.key,item])),bm=new Map(b.map(item=>[item.key,item]));
+ for(const item of (t<.5?a:b)){
+  const start=am.get(item.key),end=bm.get(item.key);
+  if(!start||!end)continue;
+  const uA={u:start.m.ax/start.m.box.w,v:start.m.ay/start.m.box.h};
+  const uB={u:end.m.ax/end.m.box.w,v:end.m.ay/end.m.box.h};
+  const basis=blendMorphMatrix(normalizedMorphMatrix(start,mirror),normalizedMorphMatrix(end,mirror),t,uA,uB);
+  const alpha=mix(start.alpha,end.alpha,t);
+  drawMorphPiece(start,basis,(1-t)*alpha);drawMorphPiece(end,basis,t*alpha);
+ }
 }
 function paint(){
  const layers=renderTurnLayers(),physicalTurn=s.turn,physicalMirror=s.mirror;
@@ -1636,7 +1705,11 @@ function paint(){
  groundMarks();
  ctx.restore();
  fit.geoms.length=0;
- for(const layer of layers){
+ if(s.reorient&&!fit.active&&artEnabled()&&frontSheet.boxes.length===9&&rearSheet.boxes.length===9&&
+    s.reorient.startMirror===s.mirror){
+  const m=smooth(clamp((s.reorient.t-.34)/.32,0,1));
+  drawMorphTurn(m,Math.sign(s.reorient.startTurn),s.reorient.dir,s.mirror);
+ }else for(const layer of layers){
   s.turn=layer.turn;s.mirror=layer.mirror;
   useSheetView(s.turn<0?"rear":"front");
   spriteBlendAlpha=layer.alpha;
@@ -1832,6 +1905,17 @@ function runRegressions(){
     (t<=.37?startOK:t>=.63?endOK:rendered.length===2);
   }
  }
+ // Морф между двумя матрицами: сохранение толщины спрайта в середине.
+ const A={a:50,b:0,c:0,d:90,e:12,f:20},B={a:0,b:50,c:-90,d:0,e:25,f:28};
+ const H=blendMorphMatrix(A,B,.5),det=H.a*H.d-H.b*H.c;
+ const uvA={u:.2,v:.4},uvB={u:.8,v:.5};
+ const anchored=blendMorphMatrix(A,B,.5,uvA,uvB);
+ const px=mix(A.a*uvA.u+A.c*uvA.v+A.e,B.a*uvB.u+B.c*uvB.v+B.e,.5);
+ const py=mix(A.b*uvA.u+A.d*uvA.v+A.f,B.b*uvB.u+B.d*uvB.v+B.f,.5);
+ const pivotError=Math.hypot(anchored.a*.5+anchored.c*.45+anchored.e-px,
+  anchored.b*.5+anchored.d*.45+anchored.f-py);
+ results.push({test:"морф деталей: сетка без коллапса и опорный шарнир",ok:
+  Math.abs(Math.hypot(H.a,H.b)-50)<.001&&det>1000&&Math.abs(H.e-18.5)<.0001&&pivotError<.0001});
  results.push({test:"лицо↔спина: полная ширина, плавное перекрытие ракурсов",ok:safeTurns});
  s.mode=originalMode;s.speed=originalSpeed;widthKey=originalWidth;init();
  // Регрессия: при zoom<1 старый буфер должен стираться даже по краям холста.
