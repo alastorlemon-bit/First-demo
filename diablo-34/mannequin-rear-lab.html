@@ -564,8 +564,8 @@ const REAR_ANCHORS=Object.freeze([
  [[.712,.186],[.211,.893]], // дальнее плечо
  [[.298,.182],[.699,.885]], // ближнее плечо
  [[.584,.133],[.380,.920]], // бедро
- [[.792,.082],[.384,.537]], // предплечье + кисть
- [[.158,.089],[.571,.554]], // предплечье + кисть
+ [[.792,.082],[.340,.605]], // дальнее предплечье: крепление ближе к ладони
+ [[.158,.089],[.610,.622]], // ближнее предплечье: крепление ближе к ладони
  [[.587,.127],[.295,.916]], // бедро
  [[.528,.072],[.242,.825]], // голень + стопа
  [[.383,.068],[.309,.839]]  // голень + стопа
@@ -889,8 +889,13 @@ function spriteMatrix(part,start,end,tail=false){
  const ux=vx/srcLen,uy=vy/srcLen,angle=Math.atan2(dy,dx)+cfg.angle*Math.PI/180;
  const cs=Math.cos(angle),sn=Math.sin(angle),right=part.startsWith("right");
  const distant=sheetView==="rear"?!right:right;
- const along=(tail?ART_LENGTH[part]/srcLen*(distant ? .90 : 1):dstLen/srcLen)*cfg.length/100;
- const across=ART_LENGTH[part]/srcLen*sheet.width*(distant ? .85 : 1)*cfg.width/100;
+ // У задних предплечий сохраняем расстояния между суставами.
+ // Сужаем графику и отдельно уменьшаем ладонь ниже лучезапястного шарнира.
+ const rearForearm=sheetView==="rear"&&part.endsWith("Forearm");
+ const handLength=rearForearm&&tail ? .75 : 1;
+ const partWidth=rearForearm ? (tail ? .73 : .84) : 1;
+ const along=(tail?ART_LENGTH[part]/srcLen*(distant ? .90 : 1)*handLength:dstLen/srcLen)*cfg.length/100;
+ const across=ART_LENGTH[part]/srcLen*sheet.width*(distant ? .85 : 1)*partWidth*cfg.width/100;
  const skew=Math.tan(cfg.skew*Math.PI/180);
  function vec(x,y){
   const longitudinal=(x*ux+y*uy)*along+(-x*uy+y*ux)*across*skew;
