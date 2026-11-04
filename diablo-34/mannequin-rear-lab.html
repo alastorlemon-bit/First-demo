@@ -144,7 +144,7 @@ body.fitEditing #fitToggle{background:#236b77}
 <div id="options">
 <label id="speedLabel">Скорость <output id="speedValue">1.0</output><input id="speed" type="range" min="0.6" max="1.5" step="0.1" value="1.0"></label>
 <label id="rigLabel"><input id="rig" type="checkbox" checked> Кости и IK</label>
-<label id="nearRightKneeLabel"><input id="nearRightMocap" type="checkbox" checked> Ближнее правое колено (спина): <span id="nearRightKneeState">CMU</span></label>
+<label id="nearRightKneeLabel"><input id="nearRightMocap" type="checkbox"> Ближнее правое колено (спина): <span id="nearRightKneeState">нейтральное</span></label>
 </div>
 <div id="meters">
 <div class="meter"><span>FOOT SLIDE</span><b class="ok" id="slide">0.000</b></div>
@@ -923,6 +923,7 @@ function spriteGraphicEndpoints(part,start,end){
   if(part==="leftUpperArm")first.x+=3.5;
   if(part==="leftThigh")first.x+=4;
   if(part==="rightUpperArm"){first.x-=3;first.y+=2}
+  if(part==="rightThigh"){first.x+=2;first.y-=2}
  }
  if(sheetView==="front"){
   if(part==="torso"){first.x-=3.5;last.x-=3.5}
@@ -1708,10 +1709,13 @@ function runRegressions(){
  const thRear=spriteGraphicEndpoints("leftThigh",pt0,pt1);
  const rightFit=fitConfig("rightUpperArm");
  const rightRear=spriteGraphicEndpoints("rightUpperArm",pt0,pt1);
+ const nearThighFit=fitConfig("rightThigh");
+ const nearThighRear=spriteGraphicEndpoints("rightThigh",pt0,pt1);
  sheetView="front";
  const shFront=spriteGraphicEndpoints("leftUpperArm",pt0,pt1);
  const thFront=spriteGraphicEndpoints("leftThigh",pt0,pt1);
  const rightFront=spriteGraphicEndpoints("rightUpperArm",pt0,pt1);
+ const nearThighFront=spriteGraphicEndpoints("rightThigh",pt0,pt1);
  sheetView=previousSheetView;
  results.push({test:"NE: спрайты плеча и бедра ближе к корпусу",ok:
   Math.abs(shRear.start.x-(pt0.x+shFit.dx+3.5))<.0001&&
@@ -1720,6 +1724,14 @@ function runRegressions(){
   Math.abs(thRear.end.x-(pt1.x+thFit.dx))<.0001&&
   Math.abs(shFront.start.x-(pt0.x+shFit.dx-2.5))<.0001&&
   Math.abs(thFront.start.x-(pt0.x+thFit.dx))<.0001});
+ results.push({test:"NE: правое бедро от корпуса и выше, нейтральное колено по умолчанию",ok:
+  !$("nearRightMocap").defaultChecked&&
+  Math.abs(nearThighRear.start.x-(pt0.x+nearThighFit.dx+2))<.0001&&
+  Math.abs(nearThighRear.start.y-(pt0.y+nearThighFit.dy-2))<.0001&&
+  Math.abs(nearThighRear.end.x-(pt1.x+nearThighFit.dx))<.0001&&
+  Math.abs(nearThighRear.end.y-(pt1.y+nearThighFit.dy))<.0001&&
+  Math.abs(nearThighFront.start.x-(pt0.x+nearThighFit.dx))<.0001&&
+  Math.abs(nearThighFront.start.y-(pt0.y+nearThighFit.dy))<.0001});
  results.push({test:"NE: правое плечо ближе и ниже, локоть и фас не сдвинуты",ok:
   Math.abs(rightRear.start.x-(pt0.x+rightFit.dx-3))<.0001&&
   Math.abs(rightRear.start.y-(pt0.y+rightFit.dy+2))<.0001&&
