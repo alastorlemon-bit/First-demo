@@ -706,6 +706,17 @@ function spriteMappedAnchor(part,start,end,mark){
  return {x:start.x+(dx*longitudinal-dy*transverse)/dstLen,
   y:start.y+(dy*longitudinal+dx*transverse)/dstLen};
 }
+function spriteGraphicEndpoints(part,start,end){
+ // Только подгонка рисунка по отмеченным суставам; физические точки не меняются.
+ if(part==="torso"){
+  const dx=-3.5;
+  return {start:{x:start.x+dx,y:start.y},end:{x:end.x+dx,y:end.y}};
+ }
+ if(part==="leftShin"){
+  return {start,end:{x:end.x-3.5,y:end.y-4}};
+ }
+ return {start,end};
+}
 function torsoShoulderPoint(l,z){
  const sway=pelvisSway();
  const head=P(s.x+sway*.18,s.y,z+BONES.headOffset);
@@ -714,9 +725,11 @@ function torsoShoulderPoint(l,z){
  const u=clamp((s.turn*l.side+1)*.5,0,1);
  const mark=[mix(TORSO_SHOULDERS.left[0],TORSO_SHOULDERS.right[0],u),
   mix(TORSO_SHOULDERS.left[1],TORSO_SHOULDERS.right[1],u)];
- return spriteMappedAnchor("torso",head,pelvis,mark);
+ const shifted=spriteGraphicEndpoints("torso",head,pelvis);
+ return spriteMappedAnchor("torso",shifted.start,shifted.end,mark);
 }
 function drawSpriteBetween(part,start,end){
+ ({start,end}=spriteGraphicEndpoints(part,start,end));
  const index=sheet.assigned[part],box=sheet.boxes[index];
  if(!box||!sheet.image)return;
  const anchors=partAnchors(part)||[[.5,.10],[.5,.88]];
