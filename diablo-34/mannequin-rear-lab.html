@@ -20,9 +20,9 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 .buttons{display:flex;gap:6px;margin-bottom:6px}
 button{flex:1;min-width:0;border:1px solid #506477;background:#293e50;color:#fff;border-radius:9px;min-height:42px;font:600 13px system-ui}
 button.active{background:#216e80;border-color:#53d1df}button:active{filter:brightness(1.3)}
-#options{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:2px 2px 7px}
+#options{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 12px;padding:2px 2px 7px}
 #speedLabel{display:flex;gap:7px;align-items:center;flex:1;min-width:0;white-space:nowrap;font-size:12px}
-#speed{width:100%;min-width:40px;accent-color:#54d9ed}#rigLabel{white-space:nowrap;font-size:12px}
+#speed{width:100%;min-width:40px;accent-color:#54d9ed}#rigLabel,#rearKneeLabel{white-space:nowrap;font-size:12px}
 input[type=checkbox]{accent-color:#54d9ed}
 #meters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
 .meter{border-radius:7px;background:#0f1d28;text-align:center;padding:6px 2px;min-width:0}
@@ -144,6 +144,7 @@ body.fitEditing #fitToggle{background:#236b77}
 <div id="options">
 <label id="speedLabel">Скорость <output id="speedValue">1.0</output><input id="speed" type="range" min="0.6" max="1.5" step="0.1" value="1.0"></label>
 <label id="rigLabel"><input id="rig" type="checkbox" checked> Кости и IK</label>
+<label id="rearKneeLabel"><input id="rearKneeCorrect" type="checkbox" checked> Дальнее колено (спина): <span id="rearKneeState">32%</span></label>
 </div>
 <div id="meters">
 <div class="meter"><span>FOOT SLIDE</span><b class="ok" id="slide">0.000</b></div>
@@ -1397,10 +1398,14 @@ for(const type of ["pointerup","pointercancel"])
 fitRefresh();
 
 // Только экранная перспектива заднего вида: мировой IK и точки опоры неизменны.
-function rearForeshortenKnee(hip,knee,ankle){
+$("rearKneeCorrect").addEventListener("change",()=>{
+ $("rearKneeState").textContent=$("rearKneeCorrect").checked?"32%":"исходное";
+ paint();
+});
+function rearForeshortenKnee(hip,knee,ankle,strength=.32){
  const dx=ankle.x-hip.x,dy=ankle.y-hip.y;
  const t=clamp(((knee.x-hip.x)*dx+(knee.y-hip.y)*dy)/Math.max(.0001,dx*dx+dy*dy),0,1);
- return {x:mix(knee.x,hip.x+dx*t,.32),y:mix(knee.y,hip.y+dy*t,.32)};
+ return {x:mix(knee.x,hip.x+dx*t,strength),y:mix(knee.y,hip.y+dy*t,strength)};
 }
 function rearForeshortenArm(shoulder,elbow,wrist){
  const upperScale=.78,forearmScale=.65;
@@ -1412,7 +1417,8 @@ function segment(l,z){
  const q=ik(l,z),A=P(q.H.x,q.H.y,q.H.z),F=P(q.F.x,q.F.y,q.F.z);
  const far=(s.turn*l.side)>0;
  let K=P(q.K.x,q.K.y,q.K.z);
- if(sheetView==="rear"&&far)K=rearForeshortenKnee(A,K,F);
+ if(sheetView==="rear"&&far)
+  K=rearForeshortenKnee(A,K,F,$("rearKneeCorrect").checked ? .32 : 0);
  ctx.globalAlpha=far?.66:1;
  if(artEnabled()){
   const side=l.id==="П"?"right":"left";
@@ -1678,6 +1684,10 @@ function runRegressions(){
   Math.abs(fk.x-27.2)<.0001&&Math.abs(fk.y-50)<.0001&&
   Math.hypot(fk.x,fk.y)<Math.hypot(k0.x,k0.y)&&
   Math.hypot(fk.x,fk.y-100)<Math.hypot(k0.x,k0.y-100)});
+ const rawK=rearForeshortenKnee(h0,k0,f0,0),correctedK=rearForeshortenKnee(h0,k0,f0,.32);
+ results.push({test:"NE: сравнение колена без коррекции / 32%",ok:
+  Math.abs(rawK.x-k0.x)<.0001&&Math.abs(rawK.y-k0.y)<.0001&&
+  Math.abs(correctedK.x-27.2)<.0001&&Math.abs(correctedK.y-50)<.0001});
  results.push({test:"NE: локоть и запястье дальней руки",ok:
   Math.abs(fa.elbow.x-31.2)<.0001&&Math.abs(fa.elbow.y-39)<.0001&&
   Math.abs(fa.wrist.x-5.2)<.0001&&Math.abs(fa.wrist.y-71.5)<.0001});
