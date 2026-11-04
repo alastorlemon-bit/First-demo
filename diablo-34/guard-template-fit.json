@@ -1,0 +1,384 @@
+{
+  "generatedAt": "2026-11-04",
+  "source": "mannequin atlas silhouette axes",
+  "front": {
+    "view": "front",
+    "filename": "guard-sw-template.webp",
+    "size": 128540,
+    "anchors": {
+      "torso": [
+        [
+          0.4708,
+          0.2009
+        ],
+        [
+          0.5024,
+          0.92
+        ]
+      ],
+      "rightUpperArm": [
+        [
+          0.6278,
+          0.1571
+        ],
+        [
+          0.2115,
+          0.8554
+        ]
+      ],
+      "rightForearm": [
+        [
+          0.7143,
+          0.1137
+        ],
+        [
+          0.3553,
+          0.6485
+        ]
+      ],
+      "leftUpperArm": [
+        [
+          0.3307,
+          0.1656
+        ],
+        [
+          0.7561,
+          0.878
+        ]
+      ],
+      "leftForearm": [
+        [
+          0.7379,
+          0.0947
+        ],
+        [
+          0.4466,
+          0.6475
+        ]
+      ],
+      "rightThigh": [
+        [
+          0.6354,
+          0.0911
+        ],
+        [
+          0.2472,
+          0.9388
+        ]
+      ],
+      "rightShin": [
+        [
+          0.6015,
+          0.0952
+        ],
+        [
+          0.5837,
+          0.7029
+        ]
+      ],
+      "leftThigh": [
+        [
+          0.4114,
+          0.0954
+        ],
+        [
+          0.6757,
+          0.9317
+        ]
+      ],
+      "leftShin": [
+        [
+          0.4418,
+          0.0987
+        ],
+        [
+          0.5593,
+          0.712
+        ]
+      ]
+    },
+    "shoulders": {
+      "right": [
+        0.112,
+        0.4042
+      ],
+      "left": [
+        0.8628,
+        0.427
+      ]
+    },
+    "metrics": [
+      {
+        "part": "torso",
+        "refWidth": 233,
+        "guardWidth": 232,
+        "xScale": 1.098,
+        "lengthScale": 1.085,
+        "tailScale": 1.085,
+        "cellScale": 0.917
+      },
+      {
+        "part": "rightUpperArm",
+        "refWidth": 107,
+        "guardWidth": 153,
+        "xScale": 0.8,
+        "lengthScale": 0.892,
+        "tailScale": 0.892,
+        "cellScale": 1
+      },
+      {
+        "part": "rightForearm",
+        "refWidth": 92,
+        "guardWidth": 109,
+        "xScale": 0.929,
+        "lengthScale": 1.261,
+        "tailScale": 1.072,
+        "cellScale": 1
+      },
+      {
+        "part": "leftUpperArm",
+        "refWidth": 118,
+        "guardWidth": 172,
+        "xScale": 0.788,
+        "lengthScale": 0.838,
+        "tailScale": 0.838,
+        "cellScale": 1
+      },
+      {
+        "part": "leftForearm",
+        "refWidth": 140,
+        "guardWidth": 122,
+        "xScale": 0.863,
+        "lengthScale": 0.988,
+        "tailScale": 0.957,
+        "cellScale": 1
+      },
+      {
+        "part": "rightThigh",
+        "refWidth": 100,
+        "guardWidth": 173,
+        "xScale": 0.646,
+        "lengthScale": 0.93,
+        "tailScale": 0.93,
+        "cellScale": 1
+      },
+      {
+        "part": "rightShin",
+        "refWidth": 104,
+        "guardWidth": 134,
+        "xScale": 0.764,
+        "lengthScale": 1.018,
+        "tailScale": 1.14,
+        "cellScale": 1
+      },
+      {
+        "part": "leftThigh",
+        "refWidth": 148,
+        "guardWidth": 183,
+        "xScale": 0.903,
+        "lengthScale": 0.863,
+        "tailScale": 0.863,
+        "cellScale": 1
+      },
+      {
+        "part": "leftShin",
+        "refWidth": 105,
+        "guardWidth": 145,
+        "xScale": 0.836,
+        "lengthScale": 1.005,
+        "tailScale": 1.125,
+        "cellScale": 0.973
+      }
+    ]
+  },
+  "rear": {
+    "view": "rear",
+    "filename": "guard-ne-template.webp",
+    "size": 121678,
+    "anchors": {
+      "torso": [
+        [
+          0.5904,
+          0.2162
+        ],
+        [
+          0.4799,
+          0.9365
+        ]
+      ],
+      "rightUpperArm": [
+        [
+          0.4308,
+          0.1303
+        ],
+        [
+          0.7244,
+          0.8952
+        ]
+      ],
+      "rightForearm": [
+        [
+          0.1744,
+          0.1211
+        ],
+        [
+          0.573,
+          0.6277
+        ]
+      ],
+      "leftUpperArm": [
+        [
+          0.6087,
+          0.1538
+        ],
+        [
+          0.2354,
+          0.8764
+        ]
+      ],
+      "leftForearm": [
+        [
+          0.768,
+          0.1271
+        ],
+        [
+          0.3647,
+          0.6339
+        ]
+      ],
+      "rightThigh": [
+        [
+          0.5404,
+          0.0857
+        ],
+        [
+          0.3683,
+          0.9402
+        ]
+      ],
+      "rightShin": [
+        [
+          0.5532,
+          0.1036
+        ],
+        [
+          0.4633,
+          0.7662
+        ]
+      ],
+      "leftThigh": [
+        [
+          0.5458,
+          0.0916
+        ],
+        [
+          0.3215,
+          0.9381
+        ]
+      ],
+      "leftShin": [
+        [
+          0.6473,
+          0.1021
+        ],
+        [
+          0.4226,
+          0.7782
+        ]
+      ]
+    },
+    "shoulders": {
+      "right": [
+        0.9465,
+        0.4929
+      ],
+      "left": [
+        0.173,
+        0.4403
+      ]
+    },
+    "metrics": [
+      {
+        "part": "torso",
+        "refWidth": 203,
+        "guardWidth": 222,
+        "xScale": 0.997,
+        "lengthScale": 1.038,
+        "tailScale": 1.038,
+        "cellScale": 0.812
+      },
+      {
+        "part": "rightUpperArm",
+        "refWidth": 101,
+        "guardWidth": 135,
+        "xScale": 0.861,
+        "lengthScale": 0.808,
+        "tailScale": 0.808,
+        "cellScale": 1
+      },
+      {
+        "part": "rightForearm",
+        "refWidth": 81,
+        "guardWidth": 107,
+        "xScale": 0.833,
+        "lengthScale": 1.222,
+        "tailScale": 1.038,
+        "cellScale": 1
+      },
+      {
+        "part": "leftUpperArm",
+        "refWidth": 86,
+        "guardWidth": 100,
+        "xScale": 0.983,
+        "lengthScale": 0.934,
+        "tailScale": 0.934,
+        "cellScale": 1
+      },
+      {
+        "part": "leftForearm",
+        "refWidth": 77,
+        "guardWidth": 91,
+        "xScale": 0.81,
+        "lengthScale": 1.113,
+        "tailScale": 0.946,
+        "cellScale": 1
+      },
+      {
+        "part": "rightThigh",
+        "refWidth": 140,
+        "guardWidth": 142,
+        "xScale": 1.11,
+        "lengthScale": 0.877,
+        "tailScale": 0.877,
+        "cellScale": 1
+      },
+      {
+        "part": "rightShin",
+        "refWidth": 106,
+        "guardWidth": 122,
+        "xScale": 0.904,
+        "lengthScale": 1.242,
+        "tailScale": 1.055,
+        "cellScale": 0.963
+      },
+      {
+        "part": "leftThigh",
+        "refWidth": 145,
+        "guardWidth": 144,
+        "xScale": 1.128,
+        "lengthScale": 0.912,
+        "tailScale": 0.912,
+        "cellScale": 1
+      },
+      {
+        "part": "leftShin",
+        "refWidth": 107,
+        "guardWidth": 113,
+        "xScale": 1.068,
+        "lengthScale": 1.238,
+        "tailScale": 1.052,
+        "cellScale": 1
+      }
+    ]
+  }
+}
