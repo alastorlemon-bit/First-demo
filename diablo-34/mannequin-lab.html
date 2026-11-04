@@ -1447,6 +1447,10 @@ function paint(){
  const pw=Math.round(W*dpr),ph=Math.round(H*dpr);
  if(canvas.width!==pw||canvas.height!==ph){canvas.width=pw;canvas.height=ph}
  ctx.setTransform(dpr,0,0,dpr,0,0);
+ // Полная очистка ВСЕГО экрана до масштабирования камеры.
+ // Иначе при zoom<1 снаружи уменьшенной области остаются прошлые кадры.
+ ctx.fillStyle="#132833";
+ ctx.fillRect(0,0,W,H);
  ox=W*.50-CAM.ux*s.x-CAM.vx*s.y;
  oy=H*.78-CAM.uy*s.x-CAM.vy*s.y;
  // Приближаем вид вокруг опоры персонажа, не меняя мировую геометрию.
@@ -1548,6 +1552,15 @@ function runRegressions(){
    ok:aligned&&s.stretch<1});
  }
  s.mode=originalMode;s.speed=originalSpeed;widthKey=originalWidth;init();
+ // Регрессия: при zoom<1 старый буфер должен стираться даже по краям холста.
+ const originalZoom=fit.cameraZoom;
+ ctx.setTransform(1,0,0,1,0,0);
+ ctx.fillStyle="#ff0044";ctx.fillRect(0,0,canvas.width,canvas.height);
+ fit.cameraZoom=.5;paint();
+ const corner=ctx.getImageData(0,0,1,1).data;
+ results.push({test:"камера 50%: очистка полного кадра",
+  ok:!(corner[0]===255&&corner[1]===0&&corner[2]===68)});
+ fit.cameraZoom=originalZoom;paint();
  return results;
 }
 init();
