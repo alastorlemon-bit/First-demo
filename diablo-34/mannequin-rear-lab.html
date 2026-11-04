@@ -1389,9 +1389,22 @@ for(const type of ["pointerup","pointercancel"])
  anchorCanvas.addEventListener(type,()=>{if(fit.pivotDrag>=0){fit.pivotDrag=-1;fitSave()}});
 fitRefresh();
 
+// Только экранная перспектива заднего вида: мировой IK и точки опоры неизменны.
+function rearForeshortenKnee(hip,knee,ankle){
+ const dx=ankle.x-hip.x,dy=ankle.y-hip.y;
+ const t=clamp(((knee.x-hip.x)*dx+(knee.y-hip.y)*dy)/Math.max(.0001,dx*dx+dy*dy),0,1);
+ return {x:mix(knee.x,hip.x+dx*t,.32),y:mix(knee.y,hip.y+dy*t,.32)};
+}
+function rearForeshortenArm(shoulder,elbow,wrist){
+ const scale=.78;
+ return {elbow:{x:mix(shoulder.x,elbow.x,scale),y:mix(shoulder.y,elbow.y,scale)},
+  wrist:{x:mix(shoulder.x,wrist.x,scale),y:mix(shoulder.y,wrist.y,scale)}};
+}
 function segment(l,z){
- const q=ik(l,z),A=P(q.H.x,q.H.y,q.H.z),K=P(q.K.x,q.K.y,q.K.z),F=P(q.F.x,q.F.y,q.F.z);
+ const q=ik(l,z),A=P(q.H.x,q.H.y,q.H.z),F=P(q.F.x,q.F.y,q.F.z);
  const far=(s.turn*l.side)>0;
+ let K=P(q.K.x,q.K.y,q.K.z);
+ if(sheetView==="rear"&&far)K=rearForeshortenKnee(A,K,F);
  ctx.globalAlpha=far?.66:1;
  if(artEnabled()){
   const side=l.id==="П"?"right":"left";
@@ -1464,6 +1477,10 @@ function arm(l,z){
   }
  }
  const far=(s.turn*l.side)>0;
+ if(sheetView==="rear"&&far){
+  const visible=rearForeshortenArm(a,b,d);
+  b=visible.elbow;d=visible.wrist;
+ }
  ctx.globalAlpha=far?.65:1;
  if(artEnabled()){
   const side=l.id==="П"?"right":"left";
@@ -1646,6 +1663,16 @@ function runRegressions(){
   results.push({test:"20 с / без бокового дрейфа "+(dir===1?"SW":"NE"),
    ok:aligned&&s.stretch<1});
  }
+ // Задний вид: дальние суставы визуально сокращаются, ближние не трогаем.
+ const h0={x:0,y:0},k0={x:40,y:50},f0={x:0,y:100};
+ const fk=rearForeshortenKnee(h0,k0,f0),fa=rearForeshortenArm(h0,k0,f0);
+ results.push({test:"NE: колено дальнее, опоры неподвижны",ok:
+  Math.abs(fk.x-27.2)<.0001&&Math.abs(fk.y-50)<.0001&&
+  Math.hypot(fk.x,fk.y)<Math.hypot(k0.x,k0.y)&&
+  Math.hypot(fk.x,fk.y-100)<Math.hypot(k0.x,k0.y-100)});
+ results.push({test:"NE: локоть и запястье дальней руки",ok:
+  Math.abs(fa.elbow.x-31.2)<.0001&&Math.abs(fa.elbow.y-39)<.0001&&
+  Math.abs(fa.wrist.y-78)<.0001});
  s.mode=originalMode;s.speed=originalSpeed;widthKey=originalWidth;init();
  // Регрессия: при zoom<1 старый буфер должен стираться даже по краям холста.
  const originalZoom=fit.cameraZoom;
