@@ -943,11 +943,10 @@ function spriteGraphicEndpoints(part,start,end){
  // Не трогаем текущие калибровки манекена, добавляем смещение сверху.
  const first={...start},last={...end};
  if(sheetView==="rear"){
-  // Уводим к корпусу только верхние сочленения дальних спрайтов.
-  // Локоть и колено остаются на своих костях.
-  if(part==="leftUpperArm")first.x+=3.5;
+  // Плечевые края отводим наружу на 2.5 px; локти и колени остаются на местах.
+  if(part==="leftUpperArm")first.x+=1;
   if(part==="leftThigh")first.x+=4;
-  if(part==="rightUpperArm"){first.x-=3;first.y+=2}
+  if(part==="rightUpperArm"){first.x-=.5;first.y+=2}
   if(part==="rightThigh"){first.x+=4;first.y-=4}
  }
  if(sheetView==="front"){
@@ -1851,8 +1850,8 @@ function runRegressions(){
  const rightFront=spriteGraphicEndpoints("rightUpperArm",pt0,pt1);
  const nearThighFront=spriteGraphicEndpoints("rightThigh",pt0,pt1);
  sheetView=previousSheetView;
- results.push({test:"NE: спрайты плеча и бедра ближе к корпусу",ok:
-  Math.abs(shRear.start.x-(pt0.x+shFit.dx+3.5))<.0001&&
+ results.push({test:"NE: плечевой спрайт наружу, бедро без изменений",ok:
+  Math.abs(shRear.start.x-(pt0.x+shFit.dx+1))<.0001&&
   Math.abs(thRear.start.x-(pt0.x+thFit.dx+4))<.0001&&
   Math.abs(shRear.end.x-(pt1.x+shFit.dx))<.0001&&
   Math.abs(thRear.end.x-(pt1.x+thFit.dx))<.0001&&
@@ -1866,8 +1865,8 @@ function runRegressions(){
   Math.abs(nearThighRear.end.y-(pt1.y+nearThighFit.dy))<.0001&&
   Math.abs(nearThighFront.start.x-(pt0.x+nearThighFit.dx))<.0001&&
   Math.abs(nearThighFront.start.y-(pt0.y+nearThighFit.dy))<.0001});
- results.push({test:"NE: правое плечо ближе и ниже, локоть и фас не сдвинуты",ok:
-  Math.abs(rightRear.start.x-(pt0.x+rightFit.dx-3))<.0001&&
+ results.push({test:"NE: правое плечо наружу и ниже, локоть и фас не сдвинуты",ok:
+  Math.abs(rightRear.start.x-(pt0.x+rightFit.dx-.5))<.0001&&
   Math.abs(rightRear.start.y-(pt0.y+rightFit.dy+2))<.0001&&
   Math.abs(rightRear.end.x-(pt1.x+rightFit.dx))<.0001&&
   Math.abs(rightRear.end.y-(pt1.y+rightFit.dy))<.0001&&
