@@ -713,7 +713,11 @@ function spriteGraphicEndpoints(part,start,end){
   return {start:{x:start.x+dx,y:start.y},end:{x:end.x+dx,y:end.y}};
  }
  if(part==="leftShin"){
-  return {start,end:{x:end.x-3.5,y:end.y-4}};
+  return {start,end:{x:end.x-3.5,y:end.y-6.5}};
+ }
+ if(part==="leftUpperArm"){
+  // Левое плечо ближе к корпусу; локоть остаётся у своей кости.
+  return {start:{x:start.x-2.5,y:start.y},end};
  }
  return {start,end};
 }
