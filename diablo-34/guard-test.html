@@ -884,6 +884,13 @@ const GUARD_ANCHORS=Object.freeze({
   rightShin:[[.50,.10],[.50,.73]],leftShin:[[.47,.10],[.48,.74]]
  })
 });
+// Масштаб толщины задан по двум отдельным атласам стражника.
+// Длины костей, локти, запястья, колени и голеностопы остаются в точках рига.
+// Иначе широкий исходный прямоугольник кисти/сапога раздувает весь сегмент.
+const GUARD_ART_WIDTH=Object.freeze({
+ front:Object.freeze({rightForearm:.68,leftForearm:.78,rightShin:.67,leftShin:.75}),
+ rear:Object.freeze({rightForearm:.63,leftForearm:.65,rightShin:.65,leftShin:.77})
+});
 function partAnchors(part){
  const custom=fitConfig(part).anchors;
  if(custom)return custom;
@@ -936,7 +943,8 @@ function spriteMatrix(part,start,end,tail=false){
  // новый костюм уже нарисован в собственной перспективе для каждого вида.
  // Ручная графическая подгонка остаётся в cfg, физический риг неизменен.
  const along=(tail?ART_LENGTH[part]/srcLen:dstLen/srcLen)*cfg.length/100;
- const across=ART_LENGTH[part]/srcLen*sheet.width*cfg.width/100;
+ const across=ART_LENGTH[part]/srcLen*sheet.width*
+  (GUARD_ART_WIDTH[sheetView][part]||1)*cfg.width/100;
  const skew=Math.tan(cfg.skew*Math.PI/180);
  function vec(x,y){
   const longitudinal=(x*ux+y*uy)*along+(-x*uy+y*ux)*across*skew;
@@ -1536,8 +1544,9 @@ function arm(l,z){
  ctx.globalAlpha=(far?.65:1)*spriteBlendAlpha;
  if(artEnabled()){
   const side=l.id==="П"?"right":"left";
-  drawSpriteBetween(side+"UpperArm",a,b);
+  // Манжета плеча закрывает начало предплечья на сгибе локтя.
   drawSpriteBetween(side+"Forearm",b,d);
+  drawSpriteBetween(side+"UpperArm",a,b);
  }else{
   bone(a,b,color,9);bone(b,d,color,8);dot(b,5,color);dot(d,5,color);
  }
@@ -1908,12 +1917,23 @@ function runRegressions(){
  const nearFrontHand=handSpriteScale("front","leftForearm");
  const farFrontHand=handSpriteScale("front","rightForearm");
  sheet=originalSheet;fit.data=originalFitData;sheetView=originalSpriteView;
- results.push({test:"стражник: размер кистей и крепление запястий",ok:
-  Math.abs(nearRearHand.width-1)<.0001&&Math.abs(nearRearHand.length-1)<.0001&&
-  Math.abs(farRearHand.width-1)<.0001&&Math.abs(farRearHand.length-1)<.0001&&
-  Math.abs(nearFrontHand.width-1)<.0001&&Math.abs(nearFrontHand.length-1)<.0001&&
-  Math.abs(farFrontHand.width-1)<.0001&&Math.abs(farFrontHand.length-1)<.0001&&
+ results.push({test:"стражник: ширина манжет и крепление запястий",ok:
+  Math.abs(nearRearHand.width-GUARD_ART_WIDTH.rear.rightForearm)<.0001&&Math.abs(nearRearHand.length-1)<.0001&&
+  Math.abs(farRearHand.width-GUARD_ART_WIDTH.rear.leftForearm)<.0001&&Math.abs(farRearHand.length-1)<.0001&&
+  Math.abs(nearFrontHand.width-GUARD_ART_WIDTH.front.leftForearm)<.0001&&Math.abs(nearFrontHand.length-1)<.0001&&
+  Math.abs(farFrontHand.width-GUARD_ART_WIDTH.front.rightForearm)<.0001&&Math.abs(farFrontHand.length-1)<.0001&&
   [nearRearHand,farRearHand,nearFrontHand,farFrontHand].every(x=>x.wristError<.0001)});
+ function widthByAtlas(view,part){
+  const sh=view==="rear"?rearSheet:frontSheet,box=sh.boxes[sh.assigned[part]];
+  if(!box)return Infinity;
+  const a=GUARD_ANCHORS[view][part];
+  const srcLen=Math.hypot((a[1][0]-a[0][0])*box.w,(a[1][1]-a[0][1])*box.h);
+  return box.w*ART_LENGTH[part]/srcLen*(GUARD_ART_WIDTH[view][part]||1);
+ }
+ results.push({test:"стражник: предплечья и голени пропорциональны",ok:
+  ["front","rear"].every(view=>["right","left"].every(side=>
+   widthByAtlas(view,side+"Forearm")<widthByAtlas(view,side+"UpperArm")*.85&&
+   widthByAtlas(view,side+"Shin")<widthByAtlas(view,side+"Thigh")*1.05))});
  const bothSheets=[frontSheet,rearSheet],validAtlases=bothSheets.every(item=>
   item.image&&item.image.naturalWidth===1024&&item.image.naturalHeight===1536&&item.boxes.length===9);
  results.push({test:"стражник: два атласа, по 9 прозрачных частей",ok:validAtlases});
