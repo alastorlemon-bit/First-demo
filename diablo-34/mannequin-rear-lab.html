@@ -22,7 +22,7 @@ button{flex:1;min-width:0;border:1px solid #506477;background:#293e50;color:#fff
 button.active{background:#216e80;border-color:#53d1df}button:active{filter:brightness(1.3)}
 #options{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 12px;padding:2px 2px 7px}
 #speedLabel{display:flex;gap:7px;align-items:center;flex:1;min-width:0;white-space:nowrap;font-size:12px}
-#speed{width:100%;min-width:40px;accent-color:#54d9ed}#rigLabel,#rearKneeLabel{white-space:nowrap;font-size:12px}
+#speed{width:100%;min-width:40px;accent-color:#54d9ed}#rigLabel,#nearRightKneeLabel{white-space:nowrap;font-size:12px}
 input[type=checkbox]{accent-color:#54d9ed}
 #meters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
 .meter{border-radius:7px;background:#0f1d28;text-align:center;padding:6px 2px;min-width:0}
@@ -144,7 +144,7 @@ body.fitEditing #fitToggle{background:#236b77}
 <div id="options">
 <label id="speedLabel">Скорость <output id="speedValue">1.0</output><input id="speed" type="range" min="0.6" max="1.5" step="0.1" value="1.0"></label>
 <label id="rigLabel"><input id="rig" type="checkbox" checked> Кости и IK</label>
-<label id="rearKneeLabel"><input id="rearKneeCorrect" type="checkbox" checked> Дальнее колено (спина): <span id="rearKneeState">32%</span></label>
+<label id="nearRightKneeLabel"><input id="nearRightMocap" type="checkbox" checked> Ближнее правое колено (спина): <span id="nearRightKneeState">CMU</span></label>
 </div>
 <div id="meters">
 <div class="meter"><span>FOOT SLIDE</span><b class="ok" id="slide">0.000</b></div>
@@ -479,7 +479,7 @@ function pelvisZ(){
  }
  return Math.max(.82,z);
 }
-function ik(l,z){
+function ik(l,z,neutralKnee=false){
  const H=hip(l,z),F={x:l.foot.x,y:l.foot.y,z:l.z+(s.mode==="cmu"&&!s.anatomy ? .165 : .07)};
  const dx=F.x-H.x,dy=F.y-H.y,dz=F.z-H.z;
  const D=Math.max(.001,Math.hypot(dx,dy,dz)),ux=dx/D,uy=dy/D,uz=dz/D;
@@ -488,7 +488,7 @@ function ik(l,z){
  const r=Math.sqrt(Math.max(0,UPPER*UPPER-a*a));
  // Стабильная предпочтительная сторона колена, без зеркального скачка.
  let bx=l.side*.35,by=s.turn,bz=.16;
- if(s.mode==="cmu"&&!s.anatomy){
+ if(s.mode==="cmu"&&!s.anatomy&&!neutralKnee){
   const q=mocapPose(s.phase),k=l.id==="Л"?7:10;
   const co=clamp(s.turn,-1,1),si=Math.sqrt(Math.max(0,1-co*co));
   bx=co*q[k]-si*q[k+1];by=si*q[k]+co*q[k+1];bz=q[k+2];
@@ -1398,8 +1398,8 @@ for(const type of ["pointerup","pointercancel"])
 fitRefresh();
 
 // Только экранная перспектива заднего вида: мировой IK и точки опоры неизменны.
-$("rearKneeCorrect").addEventListener("change",()=>{
- $("rearKneeState").textContent=$("rearKneeCorrect").checked?"32%":"исходное";
+$("nearRightMocap").addEventListener("change",()=>{
+ $("nearRightKneeState").textContent=$("nearRightMocap").checked?"CMU":"нейтральное";
  paint();
 });
 function rearForeshortenKnee(hip,knee,ankle,strength=.32){
@@ -1414,11 +1414,11 @@ function rearForeshortenArm(shoulder,elbow,wrist){
   y:e.y+(wrist.y-elbow.y)*forearmScale}};
 }
 function segment(l,z){
- const q=ik(l,z),A=P(q.H.x,q.H.y,q.H.z),F=P(q.F.x,q.F.y,q.F.z);
+ const neutralNearRight=sheetView==="rear"&&l.id==="П"&&!$("nearRightMocap").checked;
+ const q=ik(l,z,neutralNearRight),A=P(q.H.x,q.H.y,q.H.z),F=P(q.F.x,q.F.y,q.F.z);
  const far=(s.turn*l.side)>0;
  let K=P(q.K.x,q.K.y,q.K.z);
- if(sheetView==="rear"&&far)
-  K=rearForeshortenKnee(A,K,F,$("rearKneeCorrect").checked ? .32 : 0);
+ if(sheetView==="rear"&&far)K=rearForeshortenKnee(A,K,F);
  ctx.globalAlpha=far?.66:1;
  if(artEnabled()){
   const side=l.id==="П"?"right":"left";
@@ -1684,10 +1684,19 @@ function runRegressions(){
   Math.abs(fk.x-27.2)<.0001&&Math.abs(fk.y-50)<.0001&&
   Math.hypot(fk.x,fk.y)<Math.hypot(k0.x,k0.y)&&
   Math.hypot(fk.x,fk.y-100)<Math.hypot(k0.x,k0.y-100)});
- const rawK=rearForeshortenKnee(h0,k0,f0,0),correctedK=rearForeshortenKnee(h0,k0,f0,.32);
- results.push({test:"NE: сравнение колена без коррекции / 32%",ok:
-  Math.abs(rawK.x-k0.x)<.0001&&Math.abs(rawK.y-k0.y)<.0001&&
-  Math.abs(correctedK.x-27.2)<.0001&&Math.abs(correctedK.y-50)<.0001});
+ const nearRight=legs.find(l=>l.id==="П");
+ const kneeFoot={...nearRight.foot},kneeZ=nearRight.z,oldKnee=nearRight.oldKnee;
+ const kneeTurn=s.turn,kneePhase=s.phase;
+ s.turn=-1;s.phase=0;nearRight.foot={x:s.x+.2,y:s.y+.4};nearRight.z=0;
+ const kneeCaptured=ik(nearRight,1.54,false),kneeNeutral=ik(nearRight,1.54,true);
+ nearRight.foot=kneeFoot;nearRight.z=kneeZ;nearRight.oldKnee=oldKnee;
+ s.turn=kneeTurn;s.phase=kneePhase;
+ results.push({test:"NE: ближнее правое колено CMU / нейтральное, длины костей",ok:
+  vdist(kneeCaptured.K,kneeNeutral.K)>.025&&
+  Math.abs(vdist(kneeCaptured.H,kneeCaptured.K)-BONES.thigh)<.0001&&
+  Math.abs(vdist(kneeCaptured.K,kneeCaptured.F)-BONES.shin)<.0001&&
+  Math.abs(vdist(kneeNeutral.H,kneeNeutral.K)-BONES.thigh)<.0001&&
+  Math.abs(vdist(kneeNeutral.K,kneeNeutral.F)-BONES.shin)<.0001});
  results.push({test:"NE: локоть и запястье дальней руки",ok:
   Math.abs(fa.elbow.x-31.2)<.0001&&Math.abs(fa.elbow.y-39)<.0001&&
   Math.abs(fa.wrist.x-5.2)<.0001&&Math.abs(fa.wrist.y-71.5)<.0001});
