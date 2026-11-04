@@ -96,6 +96,17 @@ body.fitEditing #fitToggle{background:#236b77}
 #fitAnchorHelp{font-size:10px;color:#afd0d8;margin:3px 0 7px}
 .fitImport{display:flex;align-items:center;justify-content:center;min-height:34px;padding:3px 5px;border:1px solid #506477;border-radius:8px;background:#293e50;text-align:center;font-weight:600;font-size:11px}
 #fitSliders[hidden],#fitAnchorTools[hidden]{display:none!important}
+#fitCameraRow{display:flex;align-items:center;gap:6px;margin:5px 0;padding:4px 6px;border-radius:7px;background:#102734}
+#fitCameraRow>span{white-space:nowrap;font-size:11px;color:#c4e8f2}
+#fitCameraRow input{flex:1;min-width:45px;accent-color:#65d6e6}
+#fitCameraRow button{flex:none;min-width:35px;min-height:32px}
+#fitCameraValue{font-variant-numeric:tabular-nums;min-width:40px;text-align:right}
+#fitVariantName{flex:2;min-width:0;height:34px;border:1px solid #64818b;border-radius:7px;background:#233b49;color:#fff;padding:4px 8px;font-size:12px}
+#fitVariantSelect{flex:2;min-width:0;height:34px;border:1px solid #64818b;border-radius:7px;background:#233b49;color:#fff;padding:4px 8px;font-size:12px;text-overflow:ellipsis}
+#fitVariantStatus{font-size:10px;color:#abd6df;min-height:14px;margin-bottom:4px}
+#fitVariantSave,#fitVariantLoad{background:#215668}
+#fitVariantDelete{flex:none!important;background:#49313a;border-color:#755365}
+@media(max-width:600px){#fitCameraRow{padding:2px 5px}#fitVariantName,#fitVariantSelect{font-size:11px}#fitVariantSave,#fitVariantLoad,#fitVariantDelete{min-width:0}}
 #fitHint{font-size:10px;color:#a4c9d2;padding:1px 0 5px}
 @media(max-width:600px){#fitPanel{max-height:44dvh;padding:4px 6px max(4px,env(safe-area-inset-bottom))}#fitToggle{min-height:32px;font-size:11px}#fitSliders{gap:1px 8px}#fitSliders input{height:23px}#fitAnchorView{height:135px}}
 </style>
@@ -163,6 +174,21 @@ body.fitEditing #fitToggle{background:#236b77}
   <div id="fitAnchorHelp">Тяни оранжевую точку к началу кости, голубую — к концу. Они привязаны к пикселям спрайта.</div>
  </div>
  <div id="fitHint">Тяни спрайт на фигуре для смещения. Фиолетовая точка вращает. Кости остаются на месте.</div>
+ <div id="fitCameraRow">
+  <span>Камера</span><button id="fitZoomOut" type="button">−</button>
+  <input id="fitCameraZoom" type="range" min="50" max="350" step="5" value="100" aria-label="Масштаб камеры">
+  <output id="fitCameraValue">100%</output><button id="fitZoomIn" type="button">＋</button>
+ </div>
+ <div class="fitBar">
+  <input id="fitVariantName" type="text" maxlength="40" placeholder="Имя варианта, например: Торс 2" aria-label="Имя нового варианта">
+  <button id="fitVariantSave" type="button">＋ Сохранить</button>
+ </div>
+ <div class="fitBar">
+  <select id="fitVariantSelect" aria-label="Сохранённые варианты"><option value="">Выбрать вариант…</option></select>
+  <button id="fitVariantLoad" type="button">Загрузить</button>
+  <button id="fitVariantDelete" type="button">Удалить</button>
+ </div>
+ <div id="fitVariantStatus" role="status">Автосохранение активно · до 12 именованных вариантов</div>
  <div class="fitBar">
   <button id="fitPose" type="button">Т-поза</button>
   <button id="fitFrame" type="button">+1 кадр</button>
@@ -244,7 +270,7 @@ const WIDTHS=Object.freeze({
 });
 let widthKey="wide";
 const widthPreset=()=>WIDTHS[widthKey];
-function setWidth(k){widthKey=k;refreshButtons();paint()}
+function setWidth(k){widthKey=k;refreshButtons();paint();fitSave()}
 
 const legs=[{id:"П",side:1,off:0,color:"#ffad64"},{id:"Л",side:-1,off:.5,color:"#59d9ff"}];
 const s={x:0,y:0,phase:0,dir:0,face:1,turn:1,vel:0,speed:1,paused:false,anatomy:false,mode:"cmu",reorient:null,slide:0,pop:0,stretch:0,limp:null};
@@ -528,8 +554,10 @@ const spriteNames=[
 const sheet={image:null,boxes:[],assigned:{},width:1};
 // Все поправки принадлежат только графике; физический риг и суставы не меняем.
 const fit={active:false,part:"torso",tab:"transform",data:{},geoms:[],pointer:null,
- pivotDrag:-1,anchorFrame:null,pending:null};
+ pivotDrag:-1,anchorFrame:null,pending:null,cameraZoom:1,touches:new Map(),
+ pinch:null,variants:[]};
 const FIT_KEY="diablo34-sprite-fit-v1";
+const FIT_VARIANTS_KEY="diablo34-sprite-variants-v1";
 const FIT_DEFAULT=()=>({dx:0,dy:0,angle:0,width:100,length:100,skew:0,anchors:null});
 const fitConfig=part=>fit.data[part]||(fit.data[part]=FIT_DEFAULT());
 function fitSave(){
@@ -538,8 +566,63 @@ function fitSave(){
 }
 function fitPackage(){
  return {version:1,source:sheet.image?[sheet.image.naturalWidth,sheet.image.naturalHeight]:null,
-  parts:fit.data,assigned:{...sheet.assigned},sheetWidth:sheet.width};
+  parts:fit.data,assigned:{...sheet.assigned},sheetWidth:sheet.width,
+  cameraZoom:fit.cameraZoom,widthPreset:widthKey};
 }
+function fitCameraPivot(){return {x:W*.5,y:H*.78}}
+function fitCameraScreenPoint(p){
+ const v=fitCameraPivot(),z=fit.cameraZoom;
+ return {x:v.x+(p.x-v.x)/z,y:v.y+(p.y-v.y)/z};
+}
+function fitRefreshCamera(){
+ $("fitCameraZoom").value=String(Math.round(fit.cameraZoom*100/5)*5);
+ $("fitCameraValue").textContent=Math.round(fit.cameraZoom*100)+"%";
+}
+function fitSetZoom(value,persist=true){
+ fit.cameraZoom=clamp(value,.5,3.5);
+ fitRefreshCamera();paint();
+ if(persist)fitSave();
+}
+function fitStatus(message){$("fitVariantStatus").textContent=message}
+function fitSaveVariants(){
+ try{localStorage.setItem(FIT_VARIANTS_KEY,JSON.stringify(fit.variants))}
+ catch(error){fitStatus("Нет доступа к хранилищу браузера · экспортируй JSON")}
+}
+function fitValidVariant(item){
+ if(!item||typeof item!=="object"||!item.data||item.data.version!==1||
+  typeof item.data.parts!=="object"||typeof item.name!=="string")return null;
+ const parts={};
+ for(const [id] of spriteNames)parts[id]=fitSanitize(item.data.parts[id]);
+ const source=Array.isArray(item.data.source)?item.data.source.slice(0,2):null;
+ const data={version:1,source,parts,assigned:item.data.assigned||{},
+  sheetWidth:item.data.sheetWidth,cameraZoom:item.data.cameraZoom,
+  widthPreset:item.data.widthPreset};
+ return {id:String(item.id||Date.now()).slice(0,50),
+  name:item.name.trim().slice(0,40)||"Без имени",savedAt:item.savedAt||"",data};
+}
+function fitRefreshVariants(){
+ const select=$("fitVariantSelect"),selected=select.value;
+ select.replaceChildren(new Option("Выбрать вариант…",""));
+ for(const item of fit.variants)select.append(new Option(item.name,item.id));
+ select.value=fit.variants.some(item=>item.id===selected)?selected:"";
+}
+function fitImportVariants(items){
+ if(!Array.isArray(items))return 0;
+ let added=0;
+ for(const original of items.slice(0,12)){
+  const item=fitValidVariant(original);
+  if(!item||fit.variants.length>=12)break;
+  if(fit.variants.some(v=>v.id===item.id))
+   item.id=String(Date.now())+"-"+Math.random().toString(36).slice(2,7);
+  fit.variants.push(item);added++;
+ }
+ fitSaveVariants();fitRefreshVariants();
+ return added;
+}
+try{
+ const saved=JSON.parse(localStorage.getItem(FIT_VARIANTS_KEY)||"[]");
+ if(Array.isArray(saved))fit.variants=saved.map(fitValidVariant).filter(Boolean).slice(0,12);
+}catch(error){fit.variants=[]}
 function artEnabled(){return !!(sheet.image&&sheet.boxes.length===9&&$("spriteMode").checked)}
 function setArtMessage(message){$("artMessage").textContent=message}
 function extractSheetPieces(image){
@@ -875,15 +958,19 @@ function fitApplyPending(){
  const data=fit.pending;
  if(!data||!sheet.image||sheet.boxes.length!==9)return;
  fit.pending=null;
- if(data.version!==1||!data.parts||typeof data.parts!=="object")return;
+ if(data.version!==1||!data.parts||typeof data.parts!=="object")return false;
  if(data.source&&Array.isArray(data.source)&&
   (data.source[0]!==sheet.image.naturalWidth||data.source[1]!==sheet.image.naturalHeight)){
   setArtMessage("Этот JSON под другой размер атласа. Настройки не применены.");
-  return;
+  fitStatus("Вариант несовместим с текущим атласом");
+  return false;
  }
  const next={};
  for(const [id] of spriteNames)next[id]=fitSanitize(data.parts[id]);
  fit.data=next;
+ if(["orig","mid","wide"].includes(data.widthPreset))widthKey=data.widthPreset;
+ if(typeof data.cameraZoom==="number"&&Number.isFinite(data.cameraZoom))
+  fit.cameraZoom=clamp(data.cameraZoom,.5,3.5);
  if(data.assigned&&typeof data.assigned==="object"){
   for(const [id] of spriteNames){
    const n=data.assigned[id];
@@ -899,7 +986,8 @@ function fitApplyPending(){
   $("spriteWidth").value=String(Math.round(sheet.width*100));
   $("widthValue").textContent=Math.round(sheet.width*100)+"%";
  }
- fitRefresh();
+ fitRefresh();fitRefreshCamera();refreshButtons();
+ return true;
 }
 try{fit.pending=JSON.parse(localStorage.getItem(FIT_KEY)||"null")}
 catch(error){fit.pending=null}
@@ -972,8 +1060,43 @@ $("fitReset").onclick=()=>{
 $("fitPose").onclick=()=>{$("anatomy").click();fitRefresh();paint()};
 $("fitFrame").onclick=()=>{$("frame").click();fitRefresh()};
 $("fitPlay").onclick=()=>{$("pause").click();fitRefresh()};
+$("fitCameraZoom").oninput=event=>fitSetZoom(Number(event.target.value)/100);
+$("fitZoomOut").onclick=()=>fitSetZoom(Math.round(fit.cameraZoom*20-1)/20);
+$("fitZoomIn").onclick=()=>fitSetZoom(Math.round(fit.cameraZoom*20+1)/20);
+$("fitVariantSave").onclick=()=>{
+ if(!sheet.image){fitStatus("Сначала дождись загрузки атласа");return}
+ if(fit.variants.length>=12){fitStatus("Все 12 слотов заняты · освободи один");return}
+ const raw=$("fitVariantName").value.trim().slice(0,40);
+ const base=raw||"Вариант",names=new Set(fit.variants.map(item=>item.name));
+ let name=base,n=2;
+ while(names.has(name)){name=base+" ("+n+")";n++}
+ const id=String(Date.now())+"-"+Math.random().toString(36).slice(2,7);
+ const snapshot=JSON.parse(JSON.stringify(fitPackage()));
+ fit.variants.push({id,name,savedAt:new Date().toISOString(),data:snapshot});
+ fitSaveVariants();fitRefreshVariants();
+ $("fitVariantSelect").value=id;$("fitVariantName").value="";
+ fitStatus("Сохранён вариант «"+name+"» · "+fit.variants.length+"/12");
+};
+$("fitVariantLoad").onclick=()=>{
+ const item=fit.variants.find(v=>v.id===$("fitVariantSelect").value);
+ if(!item){fitStatus("Сначала выбери вариант из списка");return}
+ fit.pending=JSON.parse(JSON.stringify(item.data));
+ if(fitApplyPending()){
+  fitSave();paint();fitStatus("Загружен «"+item.name+"»");
+ }
+};
+$("fitVariantDelete").onclick=()=>{
+ const id=$("fitVariantSelect").value;
+ const item=fit.variants.find(v=>v.id===id);
+ if(!item){fitStatus("Выбери вариант для удаления");return}
+ if(!confirm("Удалить сохранённый вариант «"+item.name+"»?"))return;
+ fit.variants=fit.variants.filter(v=>v.id!==id);
+ fitSaveVariants();fitRefreshVariants();
+ fitStatus("Удалён «"+item.name+"». Текущая подгонка не изменилась.");
+};
+fitRefreshVariants();fitRefreshCamera();
 $("fitExport").onclick=()=>{
- const data=JSON.stringify(fitPackage(),null,2);
+ const data=JSON.stringify({...fitPackage(),variants:fit.variants},null,2);
  const url=URL.createObjectURL(new Blob([data],{type:"application/json"}));
  const link=document.createElement("a");
  link.href=url;link.download="diablo34-sprite-fit.json";
@@ -986,8 +1109,13 @@ $("fitImport").addEventListener("change",async event=>{
   if(file.size>1000000)throw Error("Слишком большой JSON");
   const parsed=JSON.parse(await file.text());
   if(parsed.version!==1||!parsed.parts)throw Error("Неверный формат");
-  fit.pending=parsed;fitApplyPending();fitSave();paint();
- }catch(error){setArtMessage("Ошибка импорта: "+error.message)}
+  const added=fitImportVariants(parsed.variants);
+  fit.pending=parsed;
+  if(fitApplyPending()){
+   fitSave();paint();
+   fitStatus("Импорт готов"+(added?" · добавлено вариантов: "+added:""));
+  }
+ }catch(error){fitStatus("Ошибка импорта: "+error.message)}
  event.target.value="";
 });
 function fitHitPoint(point,poly){
@@ -1001,8 +1129,9 @@ function fitHitPoint(point,poly){
 }
 function fitCanvasPoint(event,target){
  const bounds=target.getBoundingClientRect();
- return {x:(event.clientX-bounds.left)*target.clientWidth/bounds.width,
+ const point={x:(event.clientX-bounds.left)*target.clientWidth/bounds.width,
   y:(event.clientY-bounds.top)*target.clientHeight/bounds.height};
+ return target===canvas?fitCameraScreenPoint(point):point;
 }
 function fitRotationHandle(g){
  const p=g.corners[0],q=g.corners[1];
@@ -1041,6 +1170,17 @@ function fitDrawOverlay(){
  ctx.restore();
 }
 canvas.addEventListener("pointerdown",event=>{
+ if(event.pointerType==="touch"){
+  event.preventDefault();
+  fit.touches.set(event.pointerId,{x:event.clientX,y:event.clientY});
+  canvas.setPointerCapture(event.pointerId);
+  if(fit.touches.size>=2){
+   const pair=[...fit.touches.values()].slice(0,2);
+   const distance=Math.max(5,Math.hypot(pair[0].x-pair[1].x,pair[0].y-pair[1].y));
+   fit.pinch={distance,zoom:fit.cameraZoom};
+   fit.pointer=null;return;
+  }
+ }
  if(!fit.active||!artEnabled())return;
  event.preventDefault();
  const point=fitCanvasPoint(event,canvas);
@@ -1060,6 +1200,16 @@ canvas.addEventListener("pointerdown",event=>{
   origin:g.start,angle:Math.atan2(point.y-g.start.y,point.x-g.start.x)};
 });
 canvas.addEventListener("pointermove",event=>{
+ if(fit.touches.has(event.pointerId)){
+  fit.touches.set(event.pointerId,{x:event.clientX,y:event.clientY});
+  if(fit.pinch&&fit.touches.size>=2){
+   event.preventDefault();
+   const pair=[...fit.touches.values()].slice(0,2);
+   const distance=Math.hypot(pair[0].x-pair[1].x,pair[0].y-pair[1].y);
+   fitSetZoom(fit.pinch.zoom*distance/fit.pinch.distance,false);
+   return;
+  }
+ }
  const drag=fit.pointer;
  if(!drag||drag.id!==event.pointerId)return;
  event.preventDefault();
@@ -1077,6 +1227,10 @@ canvas.addEventListener("pointermove",event=>{
  fitRefresh();paint();
 });
 function fitEndDrag(event){
+ if(fit.touches.delete(event.pointerId)){
+  if(fit.touches.size<2)fit.pinch=null;
+  fitSave();
+ }
  if(fit.pointer&&fit.pointer.id===event.pointerId){fit.pointer=null;fitSave()}
 }
 canvas.addEventListener("pointerup",fitEndDrag);
@@ -1295,6 +1449,12 @@ function paint(){
  ctx.setTransform(dpr,0,0,dpr,0,0);
  ox=W*.50-CAM.ux*s.x-CAM.vx*s.y;
  oy=H*.78-CAM.uy*s.x-CAM.vy*s.y;
+ // Приближаем вид вокруг опоры персонажа, не меняя мировую геометрию.
+ const pivot=fitCameraPivot();
+ ctx.save();
+ ctx.translate(pivot.x,pivot.y);
+ ctx.scale(fit.cameraZoom,fit.cameraZoom);
+ ctx.translate(-pivot.x,-pivot.y);
  drawGrid();groundMarks();
  const z=pelvisZ();
  fit.geoms.length=0;
@@ -1306,6 +1466,7 @@ function paint(){
  if(order[1].id!=="Л")segment(order[1],z);
  arm(order[1],z);
  if(fit.active)fitDrawOverlay();
+ ctx.restore();
  ctx.textAlign="left";ctx.font="11px system-ui";ctx.fillStyle="#bed5e0";
  ctx.fillText("X ↘ 36/18   Y ↙ −36/18",10,H-26);
  ctx.fillText("Мир: x "+s.x.toFixed(2)+"  y "+s.y.toFixed(2)+" | "+
