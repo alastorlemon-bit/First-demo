@@ -288,6 +288,9 @@ function driveHeading(name){
  const heading=HEADINGS[name];if(!heading)return;
  const oldMirror=s.mirror;
  s.heading=name;s.mirror=heading.mirror;drive(heading.dir,oldMirror);
+ // Игровые четыре направления переключаются сразу, без промежуточного ракурса.
+ if(s.reorient)updateTurn(s.reorient.duration);
+ s.face=s.turn=heading.dir;
 }
 let W=1,H=1,ox=0,oy=0,prevStamp=0,hudWait=0;
 function frac(n){return ((n%1)+1)%1}
@@ -1598,15 +1601,7 @@ function torso(z){
 }
 // Полноразмерные позы двух ракурсов перекрываются в коротком промежутке.
 function renderTurnLayers(){
- const r=s.reorient;
- if(!r||fit.active)return [{turn:s.turn,mirror:s.mirror,alpha:1}];
- const first={turn:Math.sign(r.startTurn),mirror:r.startMirror,alpha:1};
- const second={turn:r.dir,mirror:s.mirror,alpha:1};
- const fade=smooth(clamp((r.t-.37)/.26,0,1));
- if(fade<=0)return [first];
- if(fade>=1)return [second];
- first.alpha=1-fade;second.alpha=fade;
- return [first,second];
+ return [{turn:s.reorient?s.reorient.dir:s.turn,mirror:s.mirror,alpha:1}];
 }
 // Короткий аффинный морф деталей по их исходным авторским матрицам.
 function captureSpritePose(turn,mirror){
@@ -1705,11 +1700,7 @@ function paint(){
  groundMarks();
  ctx.restore();
  fit.geoms.length=0;
- if(s.reorient&&!fit.active&&artEnabled()&&frontSheet.boxes.length===9&&rearSheet.boxes.length===9&&
-    s.reorient.startMirror===s.mirror){
-  const m=smooth(clamp((s.reorient.t-.34)/.32,0,1));
-  drawMorphTurn(m,Math.sign(s.reorient.startTurn),s.reorient.dir,s.mirror);
- }else for(const layer of layers){
+ for(const layer of layers){
   s.turn=layer.turn;s.mirror=layer.mirror;
   useSheetView(s.turn<0?"rear":"front");
   spriteBlendAlpha=layer.alpha;
@@ -1887,36 +1878,19 @@ function runRegressions(){
   );
  }
  results.push({test:"четыре направления: перемещение по двум осям",ok:fourDirections.every(Boolean)});
- // При развороте анатомия каждого ракурса неподвижна и зеркалирование запаздывает до середины.
- let safeTurns=true;
+ // Четыре ракурса переключаются на нажатие: один готовый набор спрайтов, без задержки.
+ let immediate=true,oneView=true;
  for(const [from,to] of [["SW","NE"],["SW","NW"],["SE","NE"],["NE","SW"],["NE","SE"],["NW","SW"]]){
   s.mode="cmu";init();driveHeading(from);step(36);
-  const firstMirror=s.mirror;
   driveHeading(to);
-  if(!s.reorient){safeTurns=false;continue}
-  for(const t of [0,.1,.25,.37,.49,.5,.51,.63,.75,.9,1]){
-   s.reorient.t=t;
-   const rendered=renderTurnLayers();
-   const startOK=rendered.every(v=>v.turn===HEADINGS[from].dir&&v.mirror===firstMirror);
-   const endOK=rendered.every(v=>v.turn===HEADINGS[to].dir&&v.mirror===HEADINGS[to].mirror);
-   const alpha=rendered.reduce((sum,v)=>sum+v.alpha,0);
-   safeTurns=safeTurns&&rendered.length>=1&&rendered.length<=2&&
-    Math.abs(alpha-1)<.00001&&rendered.every(v=>v.alpha>0&&v.alpha<=1&&Math.abs(v.turn)===1)&&
-    (t<=.37?startOK:t>=.63?endOK:rendered.length===2);
-  }
+  const target=HEADINGS[to],rendered=renderTurnLayers();
+  immediate=immediate&&s.reorient===null&&s.face===target.dir&&s.turn===target.dir&&
+   s.dir===target.dir&&s.mirror===target.mirror&&s.heading===to;
+  oneView=oneView&&rendered.length===1&&rendered[0].alpha===1&&
+   rendered[0].turn===target.dir&&rendered[0].mirror===target.mirror;
  }
- // Морф между двумя матрицами: сохранение толщины спрайта в середине.
- const A={a:50,b:0,c:0,d:90,e:12,f:20},B={a:0,b:50,c:-90,d:0,e:25,f:28};
- const H=blendMorphMatrix(A,B,.5),det=H.a*H.d-H.b*H.c;
- const uvA={u:.2,v:.4},uvB={u:.8,v:.5};
- const anchored=blendMorphMatrix(A,B,.5,uvA,uvB);
- const px=mix(A.a*uvA.u+A.c*uvA.v+A.e,B.a*uvB.u+B.c*uvB.v+B.e,.5);
- const py=mix(A.b*uvA.u+A.d*uvA.v+A.f,B.b*uvB.u+B.d*uvB.v+B.f,.5);
- const pivotError=Math.hypot(anchored.a*.5+anchored.c*.45+anchored.e-px,
-  anchored.b*.5+anchored.d*.45+anchored.f-py);
- results.push({test:"морф деталей: сетка без коллапса и опорный шарнир",ok:
-  Math.abs(Math.hypot(H.a,H.b)-50)<.001&&det>1000&&Math.abs(H.e-18.5)<.0001&&pivotError<.0001});
- results.push({test:"лицо↔спина: полная ширина, плавное перекрытие ракурсов",ok:safeTurns});
+ results.push({test:"смена направления мгновенная",ok:immediate});
+ results.push({test:"один готовый ракурс без смешивания",ok:oneView});
  s.mode=originalMode;s.speed=originalSpeed;widthKey=originalWidth;init();
  // Регрессия: при zoom<1 старый буфер должен стираться даже по краям холста.
  const originalZoom=fit.cameraZoom;
