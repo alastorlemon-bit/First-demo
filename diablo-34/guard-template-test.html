@@ -884,11 +884,32 @@ const GUARD_ANCHORS=Object.freeze({
   rightShin:[[.5532,.1036],[.4633,.7662]],leftShin:[[.6473,.1021],[.4226,.7782]]
  })
 });
-// Ширина уже нормализована растровым препроцессором по контурам манекена;
-// повторное сужение на этапе анимации снова исказило бы кисти и сапоги.
+// Финальная раздельная калибровка деталей нового костюма. Атлас уже
+// нормализован по манекену, но дальнему бедру спереди нужен объём ткани.
 const GUARD_ART_WIDTH=Object.freeze({
- front:Object.freeze({rightForearm:1,leftForearm:1,rightShin:1,leftShin:1}),
+ front:Object.freeze({rightForearm:1,leftForearm:1,rightThigh:1.16,rightShin:1,leftShin:1}),
  rear:Object.freeze({rightForearm:1,leftForearm:1,rightShin:1,leftShin:1})
+});
+// Кисть сидит за запястьем: можно укоротить только хвост PNG, не предплечье.
+const GUARD_TAIL_LENGTH=Object.freeze({front:Object.freeze({leftForearm:.84}),rear:Object.freeze({})});
+// Смещения ТОЛЬКО графических концов. Для голеней нижняя точка = 0:
+// голеностоп, опорная стопа и мировые кости не сдвигаются.
+const GUARD_GRAPHIC_BIAS=Object.freeze({
+ front:Object.freeze({
+  rightThigh:{start:{dy:-4}},leftThigh:{start:{dy:-4}},
+  rightShin:{start:{dx:-4,dy:-1}},leftShin:{start:{dx:-3,dy:-2}},
+  leftForearm:{start:{dx:2.5,dy:-1}}
+ }),
+ rear:Object.freeze({
+  torso:{both:{dy:7}},
+  rightShin:{start:{dx:-5}},leftShin:{start:{dx:-5}}
+ })
+});
+// Шарниры плеч нового костюма не обязаны совпадать с декоративной проймой
+// манекена. Ближняя/дальняя стороны анатомические (зеркало применяется позже).
+const GUARD_SHOULDER_LIFT=Object.freeze({
+ front:Object.freeze({right:5,left:0}),
+ rear:Object.freeze({right:9,left:12})
 });
 function partAnchors(part){
  const custom=fitConfig(part).anchors;
@@ -941,7 +962,8 @@ function spriteMatrix(part,start,end,tail=false){
  // Манекенные множители заднего торса и кистей сюда не переносим:
  // новый костюм уже нарисован в собственной перспективе для каждого вида.
  // Ручная графическая подгонка остаётся в cfg, физический риг неизменен.
- const along=(tail?ART_LENGTH[part]/srcLen:dstLen/srcLen)*cfg.length/100;
+ const along=(tail?ART_LENGTH[part]/srcLen:dstLen/srcLen)*cfg.length/100*
+  (tail?(GUARD_TAIL_LENGTH[sheetView][part]||1):1);
  const across=ART_LENGTH[part]/srcLen*sheet.width*
   (GUARD_ART_WIDTH[sheetView][part]||1)*cfg.width/100;
  const skew=Math.tan(cfg.skew*Math.PI/180);
@@ -962,11 +984,18 @@ function spriteMappedAnchor(part,start,end,mark){
  return m?spritePoint(m,mark[0]*m.box.w,mark[1]*m.box.h):null;
 }
 function spriteGraphicEndpoints(part,start,end){
- // У стражника собственные атласы: не наследуем пиксельные поправки манекена.
+ // У стражника собственные атласы: не наследуем поправки манекена.
  const first={...start},last={...end};
  const cfg=fitConfig(part);
  first.x+=cfg.dx;first.y+=cfg.dy;
  last.x+=cfg.dx;last.y+=cfg.dy;
+ const bias=GUARD_GRAPHIC_BIAS[sheetView][part];
+ if(bias){
+  first.x+=(bias.both?.dx||0)+(bias.start?.dx||0);
+  first.y+=(bias.both?.dy||0)+(bias.start?.dy||0);
+  last.x+=(bias.both?.dx||0)+(bias.end?.dx||0);
+  last.y+=(bias.both?.dy||0)+(bias.end?.dy||0);
+ }
  return {start:first,end:last};
 }
 function torsoShoulderPoint(l,z){
@@ -979,7 +1008,10 @@ function torsoShoulderPoint(l,z){
   [mix(TORSO_SHOULDERS.left[0],TORSO_SHOULDERS.right[0],u),
    mix(TORSO_SHOULDERS.left[1],TORSO_SHOULDERS.right[1],u)];
  const shifted=spriteGraphicEndpoints("torso",head,pelvis);
- return spriteMappedAnchor("torso",shifted.start,shifted.end,mark);
+ const point=spriteMappedAnchor("torso",shifted.start,shifted.end,mark);
+ if(!point)return null;
+ const side=l.side===1?"right":"left";
+ return {...point,y:point.y-GUARD_SHOULDER_LIFT[sheetView][side]};
 }
 function drawSpriteBetween(part,start,end){
  ({start,end}=spriteGraphicEndpoints(part,start,end));
@@ -1850,11 +1882,14 @@ function runRegressions(){
   sheetView=view;
   for(const [part] of spriteNames){
    const cfg=fitConfig(part),ends=spriteGraphicEndpoints(part,pt0,pt1);
+   const translated=spriteGraphicEndpoints(part,
+    {x:pt0.x+7,y:pt0.y+5},{x:pt1.x+7,y:pt1.y+5});
    isolatedOffsets=isolatedOffsets&&
-    Math.abs(ends.start.x-(pt0.x+cfg.dx))<.0001&&
-    Math.abs(ends.start.y-(pt0.y+cfg.dy))<.0001&&
-    Math.abs(ends.end.x-(pt1.x+cfg.dx))<.0001&&
-    Math.abs(ends.end.y-(pt1.y+cfg.dy))<.0001;
+    Math.abs(translated.start.x-ends.start.x-7)<.0001&&
+    Math.abs(translated.start.y-ends.start.y-5)<.0001&&
+    Math.abs(translated.end.x-ends.end.x-7)<.0001&&
+    Math.abs(translated.end.y-ends.end.y-5)<.0001&&
+    Number.isFinite(cfg.dx)&&Number.isFinite(cfg.dy);
    const anchors=GUARD_ANCHORS[view][part];
    validAnatomy=validAnatomy&&Array.isArray(anchors)&&anchors.length===2&&
     anchors.every(a=>a.length===2&&a.every(n=>Number.isFinite(n)&&n>=0&&n<=1))&&
@@ -1864,6 +1899,34 @@ function runRegressions(){
  sheetView=previousSheetView;
  results.push({test:"стражник: поправки манекена не перенесены",ok:isolatedOffsets});
  results.push({test:"стражник: 9 пар анатомических якорей на каждом виде",ok:validAnatomy});
+ // Независимые графические поправки стражника: цель IK и стопы остаются на месте.
+ const testFitData=fit.data,testView=sheetView;
+ fit.data={};
+ const endpoints=(view,part)=>{sheetView=view;return spriteGraphicEndpoints(part,pt0,pt1)};
+ const frontNearShin=endpoints("front","leftShin");
+ const frontFarShin=endpoints("front","rightShin");
+ const rearNearShin=endpoints("rear","rightShin");
+ const rearFarShin=endpoints("rear","leftShin");
+ const frontNearElbow=endpoints("front","leftForearm");
+ const frontFarHip=endpoints("front","rightThigh"),frontNearHip=endpoints("front","leftThigh");
+ const rearTorsoDrop=endpoints("rear","torso");
+ const noAnkleDrift=[frontNearShin,frontFarShin,rearNearShin,rearFarShin]
+  .every(e=>Math.hypot(e.end.x-pt1.x,e.end.y-pt1.y)<.001);
+ const shoulderLiftOK=typeof GUARD_SHOULDER_LIFT!=="undefined"&&
+  GUARD_SHOULDER_LIFT.front.right>=4&&GUARD_SHOULDER_LIFT.rear.left>=8&&
+  GUARD_SHOULDER_LIFT.rear.right>=6;
+ const graphicCorrectionOK=frontFarHip.start.y<=pt0.y-3&&
+  frontNearHip.start.y<=pt0.y-3&&
+  frontFarShin.start.x<pt0.x-2&&frontNearShin.start.x<pt0.x-2&&
+  rearNearShin.start.x<pt0.x-3&&rearFarShin.start.x<pt0.x-3&&
+  rearTorsoDrop.start.y>=pt0.y+5&&rearTorsoDrop.end.y>=pt1.y+5&&
+  frontNearElbow.start.x>=pt0.x+2&&noAnkleDrift;
+ fit.data=testFitData;sheetView=testView;
+ results.push({test:"стражник: суставы спереди, корпус и голени сзади подогнаны без сдвига стоп",ok:graphicCorrectionOK});
+ results.push({test:"стражник: графические плечи приподняты, физические кости сохранены",ok:shoulderLiftOK});
+ results.push({test:"стражник: дальнее бедро шире, ближняя кисть короче",ok:
+  (GUARD_ART_WIDTH.front.rightThigh||1)>=1.12&&
+  typeof GUARD_TAIL_LENGTH!=="undefined"&&GUARD_TAIL_LENGTH.front.leftForearm<.90});
  results.push({test:"стражник: плечи и колено заднего вида",ok:
   !$("nearRightMocap").defaultChecked&&
   [TORSO_SHOULDERS.right,TORSO_SHOULDERS.left,REAR_SHOULDERS.right,REAR_SHOULDERS.left]
@@ -1919,7 +1982,8 @@ function runRegressions(){
  results.push({test:"стражник: ширина манжет и крепление запястий",ok:
   Math.abs(nearRearHand.width-GUARD_ART_WIDTH.rear.rightForearm)<.0001&&Math.abs(nearRearHand.length-1)<.0001&&
   Math.abs(farRearHand.width-GUARD_ART_WIDTH.rear.leftForearm)<.0001&&Math.abs(farRearHand.length-1)<.0001&&
-  Math.abs(nearFrontHand.width-GUARD_ART_WIDTH.front.leftForearm)<.0001&&Math.abs(nearFrontHand.length-1)<.0001&&
+  Math.abs(nearFrontHand.width-GUARD_ART_WIDTH.front.leftForearm)<.0001&&
+  Math.abs(nearFrontHand.length-GUARD_TAIL_LENGTH.front.leftForearm)<.0001&&
   Math.abs(farFrontHand.width-GUARD_ART_WIDTH.front.rightForearm)<.0001&&Math.abs(farFrontHand.length-1)<.0001&&
   [nearRearHand,farRearHand,nearFrontHand,farFrontHand].every(x=>x.wristError<.0001)});
  function widthByAtlas(view,part){
