@@ -923,7 +923,7 @@ function spriteGraphicEndpoints(part,start,end){
   if(part==="leftUpperArm")first.x+=3.5;
   if(part==="leftThigh")first.x+=4;
   if(part==="rightUpperArm"){first.x-=3;first.y+=2}
-  if(part==="rightThigh"){first.x+=2;first.y-=2}
+  if(part==="rightThigh"){first.x+=4;first.y-=4}
  }
  if(sheetView==="front"){
   if(part==="torso"){first.x-=3.5;last.x-=3.5}
@@ -1726,8 +1726,8 @@ function runRegressions(){
   Math.abs(thFront.start.x-(pt0.x+thFit.dx))<.0001});
  results.push({test:"NE: правое бедро от корпуса и выше, нейтральное колено по умолчанию",ok:
   !$("nearRightMocap").defaultChecked&&
-  Math.abs(nearThighRear.start.x-(pt0.x+nearThighFit.dx+2))<.0001&&
-  Math.abs(nearThighRear.start.y-(pt0.y+nearThighFit.dy-2))<.0001&&
+  Math.abs(nearThighRear.start.x-(pt0.x+nearThighFit.dx+4))<.0001&&
+  Math.abs(nearThighRear.start.y-(pt0.y+nearThighFit.dy-4))<.0001&&
   Math.abs(nearThighRear.end.x-(pt1.x+nearThighFit.dx))<.0001&&
   Math.abs(nearThighRear.end.y-(pt1.y+nearThighFit.dy))<.0001&&
   Math.abs(nearThighFront.start.x-(pt0.x+nearThighFit.dx))<.0001&&
