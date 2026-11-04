@@ -278,6 +278,7 @@ function setWidth(k){widthKey=k;refreshButtons();paint();fitSave()}
 
 const legs=[{id:"П",side:1,off:0,color:"#ffad64"},{id:"Л",side:-1,off:.5,color:"#59d9ff"}];
 const s={x:0,y:0,phase:0,dir:0,face:1,turn:1,vel:0,speed:1,paused:false,anatomy:false,mode:"cmu",reorient:null,slide:0,pop:0,stretch:0,limp:null,heading:"SW",mirror:false};
+let spriteBlendAlpha=1;
 // Игровой путь поверх неизменённой локальной походки: Y = SW/NE, X = SE/NW.
 const worldPos={x:0,y:0};
 const HEADINGS=Object.freeze({SW:{dir:1,mirror:false},SE:{dir:1,mirror:true},NW:{dir:-1,mirror:true},NE:{dir:-1,mirror:false}});
@@ -1436,7 +1437,7 @@ function segment(l,z){
  const far=(s.turn*l.side)>0;
  let K=P(q.K.x,q.K.y,q.K.z);
  if(sheetView==="rear"&&far)K=rearForeshortenKnee(A,K,F);
- ctx.globalAlpha=far?.66:1;
+ ctx.globalAlpha=(far?.66:1)*spriteBlendAlpha;
  if(artEnabled()){
   const side=l.id==="П"?"right":"left";
   if(l.id==="Л"){
@@ -1453,7 +1454,7 @@ function segment(l,z){
  const sole=footSole(l),heel=P(sole.heel.x,sole.heel.y,sole.heel.z),
   toe=P(sole.toe.x,sole.toe.y,sole.toe.z),mid=P(sole.mid.x,sole.mid.y,sole.mid.z);
  if(!artEnabled()){bone(F,mid,l.color,7);bone(heel,toe,l.color,9)}
- ctx.globalAlpha=1;
+ ctx.globalAlpha=spriteBlendAlpha;
  if($("rig").checked){
   line(A,K,"#eefaff",1.25);line(K,F,"#eefaff",1.25);
   dot(K,2,"#17212c");dot(F,3,"#f5fbff");
@@ -1515,7 +1516,7 @@ function arm(l,z){
   const visible=rearForeshortenArm(a,b,d);
   b=visible.elbow;d=visible.wrist;
  }
- ctx.globalAlpha=far?.65:1;
+ ctx.globalAlpha=(far?.65:1)*spriteBlendAlpha;
  if(artEnabled()){
   const side=l.id==="П"?"right":"left";
   drawSpriteBetween(side+"UpperArm",a,b);
@@ -1523,7 +1524,7 @@ function arm(l,z){
  }else{
   bone(a,b,l.color,9);bone(b,d,l.color,8);dot(b,5,l.color);dot(d,5,l.color);
  }
- ctx.globalAlpha=1;
+ ctx.globalAlpha=spriteBlendAlpha;
  if($("rig").checked){
   line(a,b,"#f4fbff",1);line(b,d,"#f4fbff",1);
   dot(b,2,"#142331");
@@ -1586,20 +1587,20 @@ function torso(z){
   line(pelvis,P(shoulderX,s.y,z+BONES.torso),"#eaf7ff",1);dot(pelvis,3,"#9beac8");
  }
 }
-// Поворот двух утверждённых 3/4 видов: при смене атласа
-// силуэт сужается, а плечи/бедра не пересекают торс.
-function renderFacing(){
+// Полноразмерные позы двух ракурсов перекрываются в коротком промежутке.
+function renderTurnLayers(){
  const r=s.reorient;
- if(!r||fit.active)return {turn:s.turn,mirror:s.mirror,width:1};
- const e=smooth(r.t),first=r.t<.5;
- return {
-  turn:first?Math.sign(r.startTurn):r.dir,
-  mirror:first?r.startMirror:s.mirror,
-  width:Math.max(.12,Math.abs(Math.cos(Math.PI*e)))
- };
+ if(!r||fit.active)return [{turn:s.turn,mirror:s.mirror,alpha:1}];
+ const first={turn:Math.sign(r.startTurn),mirror:r.startMirror,alpha:1};
+ const second={turn:r.dir,mirror:s.mirror,alpha:1};
+ const fade=smooth(clamp((r.t-.37)/.26,0,1));
+ if(fade<=0)return [first];
+ if(fade>=1)return [second];
+ first.alpha=1-fade;second.alpha=fade;
+ return [first,second];
 }
 function paint(){
- const rendered=renderFacing(),physicalTurn=s.turn,physicalMirror=s.mirror;
+ const layers=renderTurnLayers(),physicalTurn=s.turn,physicalMirror=s.mirror;
  // Физическую диагностику считаем по реальному IK, независимо от маскировки поворота.
  let physicalMetrics=null;
  if(s.reorient&&!fit.active){
@@ -1607,8 +1608,6 @@ function paint(){
   for(const l of legs)ik(l,physicalZ);
   physicalMetrics={pop:s.pop,stretch:s.stretch,knees:legs.map(l=>l.oldKnee)};
  }
- s.turn=rendered.turn;s.mirror=rendered.mirror;
- useSheetView(s.turn<0?"rear":"front");
  W=canvas.clientWidth;H=canvas.clientHeight;if(!W||!H)return;
  const dpr=Math.min(2,window.devicePixelRatio||1);
  const pw=Math.round(W*dpr),ph=Math.round(H*dpr);
@@ -1628,29 +1627,33 @@ function paint(){
  ctx.scale(fit.cameraZoom,fit.cameraZoom);
  ctx.translate(-pivot.x,-pivot.y);
  drawGrid();
- // Перерисовка зеркального персонажа поверх неподвижной геометрии сетки.
- ctx.save();
+ // Отметки опоры рисуются один раз, обе 3/4 позы сохраняют нормальные размеры.
  ox=W*.50-CAM.ux*s.x-CAM.vx*s.y;
  oy=H*.78-CAM.uy*s.x-CAM.vy*s.y;
- const mirrored=s.mirror&&!fit.active;
- if(mirrored){ctx.translate(W,0);ctx.scale(-1,1)}
+ s.turn=layers[0].turn;s.mirror=layers[0].mirror;
+ ctx.save();
+ if(s.mirror&&!fit.active){ctx.translate(W,0);ctx.scale(-1,1)}
  groundMarks();
- if(rendered.width<1){
-  ctx.translate(W*.5,0);
-  ctx.scale(rendered.width,1);
-  ctx.translate(-W*.5,0);
- }
- const z=pelvisZ();
- fit.geoms.length=0;
- const order=legs.slice().sort((a,b)=>P(hip(a,0).x,hip(a,0).y).y-P(hip(b,0).x,hip(b,0).y).y);
- segment(order[0],z);arm(order[0],z);
- // Левая нога всегда позади корпуса: голень → бедро → торс.
- if(order[1].id==="Л")segment(order[1],z);
- torso(z);
- if(order[1].id!=="Л")segment(order[1],z);
- arm(order[1],z);
- if(fit.active)fitDrawOverlay();
  ctx.restore();
+ fit.geoms.length=0;
+ for(const layer of layers){
+  s.turn=layer.turn;s.mirror=layer.mirror;
+  useSheetView(s.turn<0?"rear":"front");
+  spriteBlendAlpha=layer.alpha;
+  ctx.save();
+  if(s.mirror&&!fit.active){ctx.translate(W,0);ctx.scale(-1,1)}
+  ctx.globalAlpha=layer.alpha;
+  const z=pelvisZ();
+  const order=legs.slice().sort((a,b)=>P(hip(a,0).x,hip(a,0).y).y-P(hip(b,0).x,hip(b,0).y).y);
+  segment(order[0],z);arm(order[0],z);
+  if(order[1].id==="Л")segment(order[1],z);
+  torso(z);
+  if(order[1].id!=="Л")segment(order[1],z);
+  arm(order[1],z);
+  if(fit.active)fitDrawOverlay();
+  ctx.restore();
+ }
+ spriteBlendAlpha=1;
  ctx.restore();
  s.turn=physicalTurn;s.mirror=physicalMirror;
  if(physicalMetrics){
@@ -1818,15 +1821,18 @@ function runRegressions(){
   const firstMirror=s.mirror;
   driveHeading(to);
   if(!s.reorient){safeTurns=false;continue}
-  for(const t of [0,.1,.25,.49,.5,.51,.75,.9,1]){
+  for(const t of [0,.1,.25,.37,.49,.5,.51,.63,.75,.9,1]){
    s.reorient.t=t;
-   const v=renderFacing();
-   const shouldFace=t<.5?HEADINGS[from].dir:HEADINGS[to].dir;
-   const shouldMirror=t<.5?firstMirror:HEADINGS[to].mirror;
-   safeTurns=safeTurns&&v.turn===shouldFace&&v.mirror===shouldMirror&&v.width>=.119&&v.width<=1;
+   const rendered=renderTurnLayers();
+   const startOK=rendered.every(v=>v.turn===HEADINGS[from].dir&&v.mirror===firstMirror);
+   const endOK=rendered.every(v=>v.turn===HEADINGS[to].dir&&v.mirror===HEADINGS[to].mirror);
+   const alpha=rendered.reduce((sum,v)=>sum+v.alpha,0);
+   safeTurns=safeTurns&&rendered.length>=1&&rendered.length<=2&&
+    Math.abs(alpha-1)<.00001&&rendered.every(v=>v.alpha>0&&v.alpha<=1&&Math.abs(v.turn)===1)&&
+    (t<=.37?startOK:t>=.63?endOK:rendered.length===2);
   }
  }
- results.push({test:"лицо↔спина: суставы без перестановки через торс",ok:safeTurns});
+ results.push({test:"лицо↔спина: полная ширина, плавное перекрытие ракурсов",ok:safeTurns});
  s.mode=originalMode;s.speed=originalSpeed;widthKey=originalWidth;init();
  // Регрессия: при zoom<1 старый буфер должен стираться даже по краям холста.
  const originalZoom=fit.cameraZoom;
