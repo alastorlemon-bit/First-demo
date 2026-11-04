@@ -728,7 +728,9 @@ function drawSpriteBetween(part,start,end){
  const ux=vx/srcLen,uy=vy/srcLen;
  const srcAngle=Math.atan2(vy,vx),dstAngle=Math.atan2(dy,dx);
  const along=dstLen/srcLen;
- const across=ART_LENGTH[part]/srcLen*sheet.width;
+ // Дальняя анатомически правая сторона: только объём графики, без сдвига суставов.
+ const rightArt=part.startsWith("right");
+ const across=ART_LENGTH[part]/srcLen*sheet.width*(rightArt?.85:1);
  const split=part.endsWith("Forearm")||part.endsWith("Shin");
  // Основной сегмент: оба суставных якоря совпадают с базовым ригом.
  ctx.save();
@@ -746,7 +748,7 @@ function drawSpriteBetween(part,start,end){
   ctx.save();
   ctx.translate(end.x,end.y);
   ctx.rotate(dstAngle);
-  ctx.scale(fixed,fixed*sheet.width);
+  ctx.scale(fixed*(rightArt?.90:1),fixed*sheet.width*(rightArt?.85:1));
   ctx.rotate(-srcAngle);
   ctx.translate(-bx,-by);
   spriteHalfClip(bx,by,ux,uy,true);
