@@ -1718,9 +1718,9 @@ function paint(){
   const z=pelvisZ();
   const order=legs.slice().sort((a,b)=>P(hip(a,0).x,hip(a,0).y).y-P(hip(b,0).x,hip(b,0).y).y);
   segment(order[0],z);arm(order[0],z);
-  if(sheetView==="rear"||order[1].id==="Л")segment(order[1],z);
+  if(s.turn<0||order[1].id==="Л")segment(order[1],z);
   torso(z);
-  if(sheetView!=="rear"&&order[1].id!=="Л")segment(order[1],z);
+  if(s.turn>=0&&order[1].id!=="Л")segment(order[1],z);
   arm(order[1],z);
   if(fit.active)fitDrawOverlay();
   ctx.restore();
