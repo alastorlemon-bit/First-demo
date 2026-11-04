@@ -919,8 +919,8 @@ function spriteMatrix(part,start,end,tail=false){
  // Сужаем графику и отдельно уменьшаем ладонь ниже лучезапястного шарнира.
  const rearForearm=sheetView==="rear"&&part.endsWith("Forearm");
  const rearTorso=sheetView==="rear"&&part==="torso";
- const handLength=rearForearm&&tail ? (distant?.90:.83) : 1;
- const partWidth=rearForearm ? (tail&&!distant?.78:.84) : 1;
+ const handLength=rearForearm&&tail ? (distant?.94:.79) : 1;
+ const partWidth=rearForearm ? (tail?(distant?.88:.75):.84) : 1;
  const along=(tail?ART_LENGTH[part]/srcLen*(distant ? .90 : 1)*handLength:dstLen/srcLen)*cfg.length/100*(rearTorso?1.04:1);
  const across=ART_LENGTH[part]/srcLen*sheet.width*(distant ? .85 : 1)*partWidth*cfg.width/100*(rearTorso?1.12:1);
  const skew=Math.tan(cfg.skew*Math.PI/180);
@@ -1920,9 +1920,9 @@ function runRegressions(){
  const nearFrontHand=handSpriteScale("front","leftForearm");
  const farFrontHand=handSpriteScale("front","rightForearm");
  sheet=originalSheet;fit.data=originalFitData;sheetView=originalSpriteView;
- results.push({test:"ближняя кисть сзади уменьшена, дальняя и запястья без изменений",ok:
-  Math.abs(nearRearHand.width-.78)<.0001&&Math.abs(nearRearHand.length-.83)<.0001&&
-  Math.abs(farRearHand.width-.714)<.0001&&Math.abs(farRearHand.length-.81)<.0001&&
+ results.push({test:"спина: дальняя кисть увеличена, ближняя уменьшена, запястья неизменны",ok:
+  Math.abs(nearRearHand.width-.75)<.0001&&Math.abs(nearRearHand.length-.79)<.0001&&
+  Math.abs(farRearHand.width-.748)<.0001&&Math.abs(farRearHand.length-.846)<.0001&&
   Math.abs(nearFrontHand.width-1)<.0001&&Math.abs(nearFrontHand.length-1)<.0001&&
   Math.abs(farFrontHand.width-.85)<.0001&&Math.abs(farFrontHand.length-.9)<.0001&&
   [nearRearHand,farRearHand,nearFrontHand,farFrontHand].every(x=>x.wristError<.0001)});
