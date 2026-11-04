@@ -1718,9 +1718,9 @@ function paint(){
   const z=pelvisZ();
   const order=legs.slice().sort((a,b)=>P(hip(a,0).x,hip(a,0).y).y-P(hip(b,0).x,hip(b,0).y).y);
   segment(order[0],z);arm(order[0],z);
-  if(order[1].id==="Л")segment(order[1],z);
+  if(sheetView==="rear"||order[1].id==="Л")segment(order[1],z);
   torso(z);
-  if(order[1].id!=="Л")segment(order[1],z);
+  if(sheetView!=="rear"&&order[1].id!=="Л")segment(order[1],z);
   arm(order[1],z);
   if(fit.active)fitDrawOverlay();
   ctx.restore();
@@ -1939,6 +1939,20 @@ function runRegressions(){
   );
  }
  results.push({test:"четыре направления: перемещение по двум осям",ok:fourDirections.every(Boolean)});
+ // На обоих задних ракурсах графика ближнего правого бедра должна
+ // рисоваться до торса: корпус закрывает верх ноги, кости не сдвигаются.
+ const baseSegment=segment,baseTorso=torso;
+ let rearLegUnderTorso=true,layerTrace=[];
+ try{
+  segment=function(l,z){layerTrace.push(l.id);return baseSegment(l,z)};
+  torso=function(z){layerTrace.push("корпус");return baseTorso(z)};
+  for(const name of ["NE","NW"]){
+   s.mode="cmu";init();driveHeading(name);layerTrace=[];paint();
+   rearLegUnderTorso=rearLegUnderTorso&&
+    layerTrace.indexOf("П")>=0&&layerTrace.indexOf("П")<layerTrace.indexOf("корпус");
+  }
+ }finally{segment=baseSegment;torso=baseTorso}
+ results.push({test:"спина NE/NW: ближняя нога под корпусом",ok:rearLegUnderTorso});
  // SE/NW отражают всю фигуру: экранное право/лево и обозначения должны
  // оставаться анатомическими, в том числе цвета и подпись ближнего колена.
  let handedness=true;
