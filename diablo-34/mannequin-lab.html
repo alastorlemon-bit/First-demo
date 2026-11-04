@@ -75,12 +75,36 @@ input[type=checkbox]{accent-color:#54d9ed}
  #artPanel{padding:7px;gap:6px}
  #artPanel label{font-size:11px}
 }
+
+/* Отдельная ручная подгонка графики: скелет и IK остаются нетронутыми. */
+#fitToggle{position:absolute;z-index:6;left:8px;bottom:8px;width:auto;min-height:36px;padding:0 12px;background:#204b56;border-color:#65bcc8}
+#fitPanel{display:none;flex:none;max-height:43dvh;overflow-y:auto;overscroll-behavior:contain;background:#172b36;border-top:1px solid #57808d;padding:7px 9px max(8px,env(safe-area-inset-bottom));font-size:12px}
+body.fitEditing #controls{display:none}
+body.fitEditing #fitPanel{display:block}
+body.fitEditing #artTools{display:none}
+body.fitEditing #fitToggle{background:#236b77}
+#fitPanel button{min-height:34px;font-size:11px;padding:3px 5px}
+.fitBar{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+.fitBar button,.fitBar .fitImport{flex:1}
+#fitPart{flex:2;min-width:0;min-height:35px;background:#263f4c;border:1px solid #61838c;border-radius:6px;color:white;padding:5px;font-size:12px}
+#fitSliders{display:grid;grid-template-columns:1fr 1fr;gap:3px 12px;margin:6px 0}
+#fitSliders label{display:block;min-width:0;color:#c3e0e8;font-size:11px}
+#fitSliders output{float:right;color:#fff;font-variant-numeric:tabular-nums}
+#fitSliders input{display:block;width:100%;height:24px;margin:0;accent-color:#60d3df}
+#fitOffset{flex:2;color:#b7d7df;font-variant-numeric:tabular-nums;white-space:nowrap;font-size:11px}
+#fitAnchorView{display:block;width:100%;height:155px;border:1px solid #527684;border-radius:7px;background:#283944;touch-action:none;object-fit:contain}
+#fitAnchorHelp{font-size:10px;color:#afd0d8;margin:3px 0 7px}
+.fitImport{display:flex;align-items:center;justify-content:center;min-height:34px;padding:3px 5px;border:1px solid #506477;border-radius:8px;background:#293e50;text-align:center;font-weight:600;font-size:11px}
+#fitSliders[hidden],#fitAnchorTools[hidden]{display:none!important}
+#fitHint{font-size:10px;color:#a4c9d2;padding:1px 0 5px}
+@media(max-width:600px){#fitPanel{max-height:44dvh;padding:4px 6px max(4px,env(safe-area-inset-bottom))}#fitToggle{min-height:32px;font-size:11px}#fitSliders{gap:1px 8px}#fitSliders input{height:23px}#fitAnchorView{height:135px}}
 </style>
 </head>
 <body>
 <header><b>Мастер-манекен · шарниры 3/4</b><small>CMU/IK сохранены</small></header>
 <div id="stage">
 <canvas id="view"></canvas>
+<button id="fitToggle" type="button">✎ Подгонка</button>
 <div id="legend"><em>Л — левая</em> · <strong>П — правая</strong><br>зелёный + — опора тела<br>кольцо — зафиксированная стопа</div>
 <div id="dimensions" hidden><b>Длины костей</b><br>Бедро: 0.80<br>Голень: 0.80<br>Плечо: 0.60<br>Предплечье: 0.54<br>Корпус: 0.86<br>Рост: ≈7 голов</div>
 <details id="artTools"><summary>🎨 Детали · настроить</summary>
@@ -118,6 +142,38 @@ input[type=checkbox]{accent-color:#54d9ed}
 </div>
 <div id="note">Изолированная проба бирюзового манекена на широком риге. Скелет и оригинальный персонаж не изменены.</div>
 </div>
+<section id="fitPanel" aria-label="Ручная подгонка спрайтов">
+ <div class="fitBar">
+  <select id="fitPart" aria-label="Выбор спрайта"></select>
+  <button id="fitDone" type="button">✓ Готово</button>
+ </div>
+ <div class="fitBar">
+  <button id="fitTransformTab" type="button" class="active">Размер и поворот</button>
+  <button id="fitAnchorTab" type="button">Точки суставов</button>
+  <span id="fitOffset">X 0 · Y 0</span>
+ </div>
+ <div id="fitSliders">
+  <label>Поворот <output id="fitAngleValue">0°</output><input id="fitAngle" type="range" min="-180" max="180" step="1" value="0"></label>
+  <label>Ширина <output id="fitWidthValue">100%</output><input id="fitWidth" type="range" min="40" max="200" step="1" value="100"></label>
+  <label>Длина <output id="fitLengthValue">100%</output><input id="fitLength" type="range" min="40" max="200" step="1" value="100"></label>
+  <label>Скос <output id="fitSkewValue">0°</output><input id="fitSkew" type="range" min="-60" max="60" step="1" value="0"></label>
+ </div>
+ <div id="fitAnchorTools" hidden>
+  <canvas id="fitAnchorView" width="320" height="160"></canvas>
+  <div id="fitAnchorHelp">Тяни оранжевую точку к началу кости, голубую — к концу. Они привязаны к пикселям спрайта.</div>
+ </div>
+ <div id="fitHint">Тяни спрайт на фигуре для смещения. Фиолетовая точка вращает. Кости остаются на месте.</div>
+ <div class="fitBar">
+  <button id="fitPose" type="button">Т-поза</button>
+  <button id="fitFrame" type="button">+1 кадр</button>
+  <button id="fitPlay" type="button">▶ Просмотр</button>
+  <button id="fitReset" type="button">Сброс детали</button>
+ </div>
+ <div class="fitBar">
+  <button id="fitExport" type="button">↓ Экспорт JSON</button>
+  <label class="fitImport">↑ Импорт JSON<input id="fitImport" type="file" accept=".json,application/json" hidden></label>
+ </div>
+</section>
 <script src="./mannequin-sheet.js"></script>
 <script>
 "use strict";
@@ -470,6 +526,20 @@ const spriteNames=[
  ["leftShin","Левая нога · голень/сапог"]
 ];
 const sheet={image:null,boxes:[],assigned:{},width:1};
+// Все поправки принадлежат только графике; физический риг и суставы не меняем.
+const fit={active:false,part:"torso",tab:"transform",data:{},geoms:[],pointer:null,
+ pivotDrag:-1,anchorFrame:null,pending:null};
+const FIT_KEY="diablo34-sprite-fit-v1";
+const FIT_DEFAULT=()=>({dx:0,dy:0,angle:0,width:100,length:100,skew:0,anchors:null});
+const fitConfig=part=>fit.data[part]||(fit.data[part]=FIT_DEFAULT());
+function fitSave(){
+ try{localStorage.setItem(FIT_KEY,JSON.stringify(fitPackage()))}
+ catch(error){console.warn("Сохранение настроек недоступно",error)}
+}
+function fitPackage(){
+ return {version:1,source:sheet.image?[sheet.image.naturalWidth,sheet.image.naturalHeight]:null,
+  parts:fit.data,assigned:{...sheet.assigned},sheetWidth:sheet.width};
+}
 function artEnabled(){return !!(sheet.image&&sheet.boxes.length===9&&$("spriteMode").checked)}
 function setArtMessage(message){$("artMessage").textContent=message}
 function extractSheetPieces(image){
@@ -595,7 +665,7 @@ function previewSheet(){
     select.value=String(best);
    }
   }
-  select.addEventListener("change",()=>{sheet.assigned[id]=Number(select.value);setArtMessage("Проверь визуально соответствие номеров суставам.")});
+  select.addEventListener("change",()=>{sheet.assigned[id]=Number(select.value);fitSave();setArtMessage("Проверь визуально соответствие номеров суставам.")});
   sheet.assigned[id]=Number(select.value);
   row.append(caption,select);mapping.append(row);
  });
@@ -612,7 +682,7 @@ function setSheetImage(image){
   setArtMessage("Не найдены 9 отдельных непрозрачных областей. Нужен PNG с прозрачным фоном и непересекающимися деталями.");
   return;
  }
- previewSheet();$("spriteMode").checked=true;
+ previewSheet();fitApplyPending();$("spriteMode").checked=true;
  setArtMessage("Найдено 9 частей. Сверь номера и назначение справа; затем закрой панель для просмотра походки.");
 }
 $("sheetInput").addEventListener("change",event=>{
@@ -625,7 +695,7 @@ $("sheetInput").addEventListener("change",event=>{
 });
 $("spriteWidth").addEventListener("input",event=>{
  sheet.width=Number(event.target.value)/100;
- $("widthValue").textContent=event.target.value+"%";
+ $("widthValue").textContent=event.target.value+"%";fitSave();
 });
 // Исходный арт смотрит вниз: верхняя точка — проксимальный сустав.
 // Скрытые 10–12% над и под суставом остаются для перекрытия.
@@ -657,6 +727,8 @@ const ATLAS_ANCHORS=Object.freeze([
  [[.367,.111],[.693,.9]] // №9 бедро
 ]);
 function partAnchors(part){
+ const custom=fitConfig(part).anchors;
+ if(custom)return custom;
  if(sheet.image?.naturalWidth===1024&&sheet.image?.naturalHeight===1536)
   return ATLAS_ANCHORS[sheet.assigned[part]]||ART_ANCHORS[part];
  return ART_ANCHORS[part];
@@ -690,42 +762,54 @@ function spriteHalfClip(x,y,ux,uy,after){
  ctx.clip();
 }
 // Проецируем произвольную метку арт-детали тем же преобразованием, что и спрайт.
-function spriteMappedAnchor(part,start,end,mark){
+// Аффинная матрица спрайта: масштаб по/поперёк кости, скос,
+// поворот, смещение и ручные анатомические якоря.
+function spriteMatrix(part,start,end,tail=false){
  const box=sheet.boxes[sheet.assigned[part]];
  if(!box||!sheet.image)return null;
- const anchors=partAnchors(part);
- const ax=anchors[0][0]*box.w,ay=anchors[0][1]*box.h;
+ const anchors=partAnchors(part),cfg=fitConfig(part);
+ const ax=anchors[tail?1:0][0]*box.w,ay=anchors[tail?1:0][1]*box.h;
  const vx=(anchors[1][0]-anchors[0][0])*box.w;
  const vy=(anchors[1][1]-anchors[0][1])*box.h;
  const srcLen=Math.hypot(vx,vy),dx=end.x-start.x,dy=end.y-start.y;
  const dstLen=Math.hypot(dx,dy);
  if(srcLen<1||dstLen<.01)return null;
- const px=mark[0]*box.w-ax,py=mark[1]*box.h-ay;
- const longitudinal=(px*vx+py*vy)/(srcLen*srcLen)*dstLen;
- const transverse=(-px*vy+py*vx)/(srcLen*srcLen)*ART_LENGTH[part]*sheet.width;
- return {x:start.x+(dx*longitudinal-dy*transverse)/dstLen,
-  y:start.y+(dy*longitudinal+dx*transverse)/dstLen};
+ const ux=vx/srcLen,uy=vy/srcLen,angle=Math.atan2(dy,dx)+cfg.angle*Math.PI/180;
+ const cs=Math.cos(angle),sn=Math.sin(angle),right=part.startsWith("right");
+ const along=(tail?ART_LENGTH[part]/srcLen*(right ? .90 : 1):dstLen/srcLen)*cfg.length/100;
+ const across=ART_LENGTH[part]/srcLen*sheet.width*(right ? .85 : 1)*cfg.width/100;
+ const skew=Math.tan(cfg.skew*Math.PI/180);
+ function vec(x,y){
+  const longitudinal=(x*ux+y*uy)*along+(-x*uy+y*ux)*across*skew;
+  const transverse=(-x*uy+y*ux)*across;
+  return {x:longitudinal*cs-transverse*sn,y:longitudinal*sn+transverse*cs};
+ }
+ const xAxis=vec(1,0),yAxis=vec(0,1),origin=tail?end:start;
+ const a=xAxis.x,b=xAxis.y,c=yAxis.x,d=yAxis.y;
+ return {a,b,c,d,e:origin.x-a*ax-c*ay,f:origin.y-b*ax-d*ay,
+  box,ax,ay,bx:anchors[1][0]*box.w,by:anchors[1][1]*box.h,ux,uy,
+  origin,srcLen};
+}
+function spritePoint(m,x,y){return {x:m.a*x+m.c*y+m.e,y:m.b*x+m.d*y+m.f}}
+function spriteMappedAnchor(part,start,end,mark){
+ const m=spriteMatrix(part,start,end);
+ return m?spritePoint(m,mark[0]*m.box.w,mark[1]*m.box.h):null;
 }
 function spriteGraphicEndpoints(part,start,end){
- // Только подгонка рисунка по отмеченным суставам; физические точки не меняются.
- if(part==="torso"){
-  const dx=-3.5;
-  return {start:{x:start.x+dx,y:start.y},end:{x:end.x+dx,y:end.y}};
- }
- if(part==="leftShin"){
-  return {start,end:{x:end.x-3.5,y:end.y-6.5}};
- }
- if(part==="leftUpperArm"){
-  // Левое плечо ближе к корпусу; локоть остаётся у своей кости.
-  return {start:{x:start.x-2.5,y:start.y},end};
- }
- return {start,end};
+ // Не трогаем текущие калибровки манекена, добавляем смещение сверху.
+ const first={...start},last={...end};
+ if(part==="torso"){first.x-=3.5;last.x-=3.5}
+ if(part==="leftShin"){last.x-=3.5;last.y-=6.5}
+ if(part==="leftUpperArm")first.x-=2.5;
+ const cfg=fitConfig(part);
+ first.x+=cfg.dx;first.y+=cfg.dy;
+ last.x+=cfg.dx;last.y+=cfg.dy;
+ return {start:first,end:last};
 }
 function torsoShoulderPoint(l,z){
  const sway=pelvisSway();
  const head=P(s.x+sway*.18,s.y,z+BONES.headOffset);
  const pelvis=P(s.x+sway,s.y,z);
- // При развороте плечевые точки меняются плавно: обе руки не перескакивают.
  const u=clamp((s.turn*l.side+1)*.5,0,1);
  const mark=[mix(TORSO_SHOULDERS.left[0],TORSO_SHOULDERS.right[0],u),
   mix(TORSO_SHOULDERS.left[1],TORSO_SHOULDERS.right[1],u)];
@@ -734,43 +818,27 @@ function torsoShoulderPoint(l,z){
 }
 function drawSpriteBetween(part,start,end){
  ({start,end}=spriteGraphicEndpoints(part,start,end));
- const index=sheet.assigned[part],box=sheet.boxes[index];
- if(!box||!sheet.image)return;
- const anchors=partAnchors(part)||[[.5,.10],[.5,.88]];
- const ax=anchors[0][0]*box.w,ay=anchors[0][1]*box.h;
- const bx=anchors[1][0]*box.w,by=anchors[1][1]*box.h;
- const vx=bx-ax,vy=by-ay,srcLen=Math.hypot(vx,vy);
- const dx=end.x-start.x,dy=end.y-start.y,dstLen=Math.hypot(dx,dy);
- if(srcLen<1||dstLen<.01)return;
- const ux=vx/srcLen,uy=vy/srcLen;
- const srcAngle=Math.atan2(vy,vx),dstAngle=Math.atan2(dy,dx);
- const along=dstLen/srcLen;
- // Дальняя анатомически правая сторона: только объём графики, без сдвига суставов.
- const rightArt=part.startsWith("right");
- const across=ART_LENGTH[part]/srcLen*sheet.width*(rightArt?.85:1);
+ const m=spriteMatrix(part,start,end);
+ if(!m)return;
  const split=part.endsWith("Forearm")||part.endsWith("Shin");
- // Основной сегмент: оба суставных якоря совпадают с базовым ригом.
  ctx.save();
- ctx.translate(start.x,start.y);
- ctx.rotate(dstAngle);
- ctx.scale(along,across);
- ctx.rotate(-srcAngle);
- ctx.translate(-ax,-ay);
- if(split)spriteHalfClip(bx,by,ux,uy,false);
- ctx.drawImage(sheet.image,box.x,box.y,box.w,box.h,0,0,box.w,box.h);
+ ctx.transform(m.a,m.b,m.c,m.d,m.e,m.f);
+ if(split)spriteHalfClip(m.bx,m.by,m.ux,m.uy,false);
+ ctx.drawImage(sheet.image,m.box.x,m.box.y,m.box.w,m.box.h,0,0,m.box.w,m.box.h);
  ctx.restore();
  if(split){
-  // Кисть или сапог — жёсткий фрагмент: масштаб больше не меняется от ракурса.
-  const fixed=ART_LENGTH[part]/srcLen;
-  ctx.save();
-  ctx.translate(end.x,end.y);
-  ctx.rotate(dstAngle);
-  ctx.scale(fixed*(rightArt?.90:1),fixed*sheet.width*(rightArt?.85:1));
-  ctx.rotate(-srcAngle);
-  ctx.translate(-bx,-by);
-  spriteHalfClip(bx,by,ux,uy,true);
-  ctx.drawImage(sheet.image,box.x,box.y,box.w,box.h,0,0,box.w,box.h);
-  ctx.restore();
+  const tail=spriteMatrix(part,start,end,true);
+  if(tail){
+   ctx.save();ctx.transform(tail.a,tail.b,tail.c,tail.d,tail.e,tail.f);
+   spriteHalfClip(tail.bx,tail.by,tail.ux,tail.uy,true);
+   ctx.drawImage(sheet.image,m.box.x,m.box.y,m.box.w,m.box.h,0,0,m.box.w,m.box.h);
+   ctx.restore();
+  }
+ }
+ if(fit.active){
+  const w=m.box.w,h=m.box.h;
+  fit.geoms.push({part,m,corners:[spritePoint(m,0,0),spritePoint(m,w,0),
+   spritePoint(m,w,h),spritePoint(m,0,h)],start,end});
  }
 }
 
@@ -779,6 +847,297 @@ function drawSpriteBetween(part,start,end){
  defaultSheet.onload=()=>{setSheetImage(defaultSheet);if(sheet.boxes.length===9)setArtMessage("Атлас манекена: 9 фрагментов. Сверь назначение, затем проверь Т-позу и походку.")};
  defaultSheet.onerror=()=>setArtMessage("Атлас манекена не загрузился — выбери PNG вручную.");
  defaultSheet.src=window.MANNEQUIN_SHEET_DATA||"./character-sheet.webp";
+
+
+/* Редактор в браузере телефона. Сохраняем поправки отдельно от исходных спрайтов. */
+function fitSanitize(raw){
+ const cfg=FIT_DEFAULT();
+ if(!raw||typeof raw!=="object")return cfg;
+ const bounds={dx:[-300,300],dy:[-300,300],angle:[-180,180],
+  width:[40,200],length:[40,200],skew:[-60,60]};
+ for(const [name,limit] of Object.entries(bounds)){
+  const value=raw[name];
+  if(typeof value==="number"&&Number.isFinite(value))
+   cfg[name]=clamp(value,limit[0],limit[1]);
+ }
+ if(Array.isArray(raw.anchors)&&raw.anchors.length===2&&
+  raw.anchors.every(a=>Array.isArray(a)&&a.length===2&&
+   a.every(v=>typeof v==="number"&&Number.isFinite(v)))){
+  const pair=raw.anchors.map(a=>a.map(v=>clamp(v,0,1)));
+  if(Math.hypot(pair[1][0]-pair[0][0],pair[1][1]-pair[0][1])>.03)
+   cfg.anchors=pair;
+ }
+ return cfg;
+}
+function fitApplyPending(){
+ const data=fit.pending;
+ if(!data||!sheet.image||sheet.boxes.length!==9)return;
+ fit.pending=null;
+ if(data.version!==1||!data.parts||typeof data.parts!=="object")return;
+ if(data.source&&Array.isArray(data.source)&&
+  (data.source[0]!==sheet.image.naturalWidth||data.source[1]!==sheet.image.naturalHeight)){
+  setArtMessage("Этот JSON под другой размер атласа. Настройки не применены.");
+  return;
+ }
+ const next={};
+ for(const [id] of spriteNames)next[id]=fitSanitize(data.parts[id]);
+ fit.data=next;
+ if(data.assigned&&typeof data.assigned==="object"){
+  for(const [id] of spriteNames){
+   const n=data.assigned[id];
+   if(Number.isInteger(n)&&n>=0&&n<sheet.boxes.length){
+    sheet.assigned[id]=n;
+    const selector=document.querySelector('#artMapping select[data-part="'+id+'"]');
+    if(selector)selector.value=String(n);
+   }
+  }
+ }
+ if(typeof data.sheetWidth==="number"&&Number.isFinite(data.sheetWidth)){
+  sheet.width=clamp(data.sheetWidth,.5,1.5);
+  $("spriteWidth").value=String(Math.round(sheet.width*100));
+  $("widthValue").textContent=Math.round(sheet.width*100)+"%";
+ }
+ fitRefresh();
+}
+try{fit.pending=JSON.parse(localStorage.getItem(FIT_KEY)||"null")}
+catch(error){fit.pending=null}
+
+const fitPartSelect=$("fitPart");
+for(const [id,name] of spriteNames){
+ const option=document.createElement("option");option.value=id;option.textContent=name;
+ fitPartSelect.append(option);
+}
+function fitRefresh(){
+ fitPartSelect.value=fit.part;
+ const cfg=fitConfig(fit.part);
+ const sliderDefs=[
+  ["fitAngle","angle","fitAngleValue","°"],
+  ["fitLength","length","fitLengthValue","%"],
+  ["fitWidth","width","fitWidthValue","%"],
+  ["fitSkew","skew","fitSkewValue","°"]
+ ];
+ for(const [input,key,out,suffix] of sliderDefs){
+  $(input).value=String(Math.round(cfg[key]));
+  $(out).textContent=Math.round(cfg[key])+suffix;
+ }
+ $("fitOffset").textContent="X "+Math.round(cfg.dx)+" · Y "+Math.round(cfg.dy);
+ $("fitPlay").textContent=s.paused?"▶ Просмотр":"⏸ Пауза";
+ $("fitAnchorTools").hidden=fit.tab!=="anchors";
+ $("fitSliders").hidden=fit.tab==="anchors";
+ $("fitTransformTab").classList.toggle("active",fit.tab!=="anchors");
+ $("fitAnchorTab").classList.toggle("active",fit.tab==="anchors");
+ $("fitHint").textContent=fit.tab==="anchors"?
+  "Двигай две точки по рисунку. Оранжевая — начало кости, голубая — конец.":
+  "Тяни выбранный спрайт для смещения; фиолетовая точка — поворот.";
+ if(fit.tab==="anchors")requestAnimationFrame(fitDrawAnchorView);
+}
+function fitSelectPart(part){
+ if(!spriteNames.some(([id])=>id===part))return;
+ fit.part=part;fitRefresh();
+}
+fitPartSelect.onchange=()=>fitSelectPart(fitPartSelect.value);
+for(const [id,key] of [["fitAngle","angle"],["fitLength","length"],
+ ["fitWidth","width"],["fitSkew","skew"]]){
+ $(id).addEventListener("input",event=>{
+  fitConfig(fit.part)[key]=Number(event.target.value);
+  fitRefresh();fitSave();
+ });
+}
+function fitToggle(force){
+ const next=typeof force==="boolean"?force:!fit.active;
+ if(fit.active===next)return;
+ fit.active=next;document.body.classList.toggle("fitEditing",next);
+ $("fitToggle").textContent=next?"✓ Подгонка":"✎ Подгонка";
+ if(next){
+  fit.previousRig=$("rig").checked;
+  $("rig").checked=true;
+  s.paused=true;
+  if(sheet.image&&sheet.boxes.length===9)$("spriteMode").checked=true;
+  $("artTools").open=false;
+ }else{
+  $("rig").checked=fit.previousRig;
+  fitSave();
+ }
+ fitRefresh();refreshButtons();paint();
+}
+$("fitToggle").onclick=()=>fitToggle();
+$("fitDone").onclick=()=>fitToggle(false);
+$("fitTransformTab").onclick=()=>{fit.tab="transform";fitRefresh()};
+$("fitAnchorTab").onclick=()=>{fit.tab="anchors";fitRefresh()};
+$("fitReset").onclick=()=>{
+ fit.data[fit.part]=FIT_DEFAULT();fitSave();fitRefresh();paint();
+};
+$("fitPose").onclick=()=>{$("anatomy").click();fitRefresh();paint()};
+$("fitFrame").onclick=()=>{$("frame").click();fitRefresh()};
+$("fitPlay").onclick=()=>{$("pause").click();fitRefresh()};
+$("fitExport").onclick=()=>{
+ const data=JSON.stringify(fitPackage(),null,2);
+ const url=URL.createObjectURL(new Blob([data],{type:"application/json"}));
+ const link=document.createElement("a");
+ link.href=url;link.download="diablo34-sprite-fit.json";
+ document.body.append(link);link.click();link.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),1000);
+};
+$("fitImport").addEventListener("change",async event=>{
+ const file=event.target.files?.[0];if(!file)return;
+ try{
+  if(file.size>1000000)throw Error("Слишком большой JSON");
+  const parsed=JSON.parse(await file.text());
+  if(parsed.version!==1||!parsed.parts)throw Error("Неверный формат");
+  fit.pending=parsed;fitApplyPending();fitSave();paint();
+ }catch(error){setArtMessage("Ошибка импорта: "+error.message)}
+ event.target.value="";
+});
+function fitHitPoint(point,poly){
+ let inside=false;
+ for(let i=0,j=poly.length-1;i<poly.length;j=i++){
+  const a=poly[i],b=poly[j];
+  if((a.y>point.y)!==(b.y>point.y) &&
+   point.x<(b.x-a.x)*(point.y-a.y)/(b.y-a.y)+a.x)inside=!inside;
+ }
+ return inside;
+}
+function fitCanvasPoint(event,target){
+ const bounds=target.getBoundingClientRect();
+ return {x:(event.clientX-bounds.left)*target.clientWidth/bounds.width,
+  y:(event.clientY-bounds.top)*target.clientHeight/bounds.height};
+}
+function fitRotationHandle(g){
+ const p=g.corners[0],q=g.corners[1];
+ const top={x:(p.x+q.x)/2,y:(p.y+q.y)/2};
+ const center={x:(g.corners[0].x+g.corners[2].x)/2,
+  y:(g.corners[0].y+g.corners[2].y)/2};
+ const dx=top.x-center.x,dy=top.y-center.y;
+ const length=Math.max(1,Math.hypot(dx,dy));
+ return {x:top.x+dx/length*24,y:top.y+dy/length*24,top};
+}
+function fitDrawOverlay(){
+ if(!fit.active)return;
+ ctx.save();ctx.globalAlpha=1;
+ for(const g of fit.geoms){
+  if(g.part===fit.part)continue;
+  ctx.strokeStyle="#79c7d04d";ctx.lineWidth=.9;ctx.setLineDash([3,4]);
+  ctx.beginPath();g.corners.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));
+  ctx.closePath();ctx.stroke();
+ }
+ ctx.setLineDash([]);
+ const g=fit.geoms.find(g=>g.part===fit.part);
+ if(g){
+  ctx.strokeStyle="#a3fcff";ctx.lineWidth=2;
+  ctx.beginPath();g.corners.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));
+  ctx.closePath();ctx.stroke();
+  const handle=fitRotationHandle(g);
+  ctx.strokeStyle="#aa7fe8";ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(handle.top.x,handle.top.y);
+  ctx.lineTo(handle.x,handle.y);ctx.stroke();
+  for(const [p,color,r] of [[g.start,"#ffc077",5],[g.end,"#6ee9ff",5],
+   [handle,"#c798ff",8]]){
+   ctx.beginPath();ctx.fillStyle="#162831";ctx.arc(p.x,p.y,r+2,0,TAU);ctx.fill();
+   ctx.beginPath();ctx.fillStyle=color;ctx.arc(p.x,p.y,r,0,TAU);ctx.fill();
+  }
+ }
+ ctx.restore();
+}
+canvas.addEventListener("pointerdown",event=>{
+ if(!fit.active||!artEnabled())return;
+ event.preventDefault();
+ const point=fitCanvasPoint(event,canvas);
+ const selected=fit.geoms.find(g=>g.part===fit.part);
+ const handle=selected&&fitRotationHandle(selected);
+ let g,mode;
+ if(handle&&dist(point,handle)<25){g=selected;mode="rotate"}
+ else if(selected&&fitHitPoint(point,selected.corners)){g=selected;mode="move"}
+ else{
+  g=[...fit.geoms].reverse().find(item=>fitHitPoint(point,item.corners));
+  mode="move";
+  if(g)fitSelectPart(g.part);
+ }
+ if(!g)return;
+ canvas.setPointerCapture(event.pointerId);
+ fit.pointer={id:event.pointerId,mode,point,cfg:{...fitConfig(g.part)},part:g.part,
+  origin:g.start,angle:Math.atan2(point.y-g.start.y,point.x-g.start.x)};
+});
+canvas.addEventListener("pointermove",event=>{
+ const drag=fit.pointer;
+ if(!drag||drag.id!==event.pointerId)return;
+ event.preventDefault();
+ const point=fitCanvasPoint(event,canvas),cfg=fitConfig(drag.part);
+ if(drag.mode==="move"){
+  cfg.dx=clamp(drag.cfg.dx+point.x-drag.point.x,-300,300);
+  cfg.dy=clamp(drag.cfg.dy+point.y-drag.point.y,-300,300);
+ }else{
+  let delta=(Math.atan2(point.y-drag.origin.y,point.x-drag.origin.x)-drag.angle)*180/Math.PI;
+  if(delta>180)delta-=360;if(delta< -180)delta+=360;
+  let deg=drag.cfg.angle+delta;
+  while(deg>180)deg-=360;while(deg< -180)deg+=360;
+  cfg.angle=deg;
+ }
+ fitRefresh();paint();
+});
+function fitEndDrag(event){
+ if(fit.pointer&&fit.pointer.id===event.pointerId){fit.pointer=null;fitSave()}
+}
+canvas.addEventListener("pointerup",fitEndDrag);
+canvas.addEventListener("pointercancel",fitEndDrag);
+
+function fitDrawAnchorView(){
+ if(!fit.active||fit.tab!=="anchors")return;
+ const target=$("fitAnchorView"),w=target.clientWidth,h=target.clientHeight;
+ if(!w||!h)return;
+ const ratio=Math.min(2,window.devicePixelRatio||1);
+ if(target.width!==Math.round(w*ratio)||target.height!==Math.round(h*ratio)){
+  target.width=Math.round(w*ratio);target.height=Math.round(h*ratio);
+ }
+ const g=target.getContext("2d");g.setTransform(ratio,0,0,ratio,0,0);
+ g.clearRect(0,0,w,h);g.fillStyle="#1c3541";g.fillRect(0,0,w,h);
+ const box=sheet.boxes[sheet.assigned[fit.part]];
+ if(!box||!sheet.image)return;
+ const scale=Math.min((w-24)/box.w,(h-16)/box.h);
+ const ox=(w-box.w*scale)/2,oy=(h-box.h*scale)/2;
+ g.drawImage(sheet.image,box.x,box.y,box.w,box.h,ox,oy,box.w*scale,box.h*scale);
+ const anchors=partAnchors(fit.part);
+ const first={x:ox+anchors[0][0]*box.w*scale,y:oy+anchors[0][1]*box.h*scale};
+ const second={x:ox+anchors[1][0]*box.w*scale,y:oy+anchors[1][1]*box.h*scale};
+ g.strokeStyle="#d9f8ff";g.lineWidth=1.5;g.setLineDash([4,4]);
+ g.beginPath();g.moveTo(first.x,first.y);g.lineTo(second.x,second.y);g.stroke();
+ g.setLineDash([]);
+ for(const [p,color,num] of [[first,"#ffaf63","1"],[second,"#53d9f5","2"]]){
+  g.beginPath();g.fillStyle="#14222b";g.arc(p.x,p.y,11,0,TAU);g.fill();
+  g.beginPath();g.fillStyle=color;g.arc(p.x,p.y,8,0,TAU);g.fill();
+  g.font="bold 10px system-ui";g.fillStyle="#102330";g.textAlign="center";
+  g.fillText(num,p.x,p.y+3);
+ }
+ fit.anchorFrame={box,scale,ox,oy,first,second};
+}
+const anchorCanvas=$("fitAnchorView");
+anchorCanvas.addEventListener("pointerdown",event=>{
+ if(!fit.active||fit.tab!=="anchors"||!fit.anchorFrame)return;
+ event.preventDefault();
+ const point=fitCanvasPoint(event,anchorCanvas);
+ const f=fit.anchorFrame;
+ const a=dist(point,f.first),b=dist(point,f.second);
+ fit.pivotDrag=a<b?0:1;
+ const cfg=fitConfig(fit.part);
+ if(!cfg.anchors)cfg.anchors=partAnchors(fit.part).map(v=>v.slice());
+ anchorCanvas.setPointerCapture(event.pointerId);
+ fitAnchorMove(event);
+});
+function fitAnchorMove(event){
+ if(fit.pivotDrag<0||!fit.anchorFrame)return;
+ event.preventDefault();
+ const point=fitCanvasPoint(event,anchorCanvas),f=fit.anchorFrame;
+ const cfg=fitConfig(fit.part),i=fit.pivotDrag;
+ const x=clamp((point.x-f.ox)/(f.box.w*f.scale),0,1);
+ const y=clamp((point.y-f.oy)/(f.box.h*f.scale),0,1);
+ const other=cfg.anchors[1-i];
+ if(Math.hypot(x-other[0],y-other[1])<.035)return;
+ cfg.anchors[i]=[x,y];
+ fitDrawAnchorView();paint();
+}
+anchorCanvas.addEventListener("pointermove",fitAnchorMove);
+for(const type of ["pointerup","pointercancel"])
+ anchorCanvas.addEventListener(type,()=>{if(fit.pivotDrag>=0){fit.pivotDrag=-1;fitSave()}});
+fitRefresh();
 
 function segment(l,z){
  const q=ik(l,z),A=P(q.H.x,q.H.y,q.H.z),K=P(q.K.x,q.K.y,q.K.z),F=P(q.F.x,q.F.y,q.F.z);
@@ -936,6 +1295,7 @@ function paint(){
  oy=H*.78-CAM.uy*s.x-CAM.vy*s.y;
  drawGrid();groundMarks();
  const z=pelvisZ();
+ fit.geoms.length=0;
  const order=legs.slice().sort((a,b)=>P(hip(a,0).x,hip(a,0).y).y-P(hip(b,0).x,hip(b,0).y).y);
  segment(order[0],z);arm(order[0],z);
  // Левая нога всегда позади корпуса: голень → бедро → торс.
@@ -943,6 +1303,7 @@ function paint(){
  torso(z);
  if(order[1].id!=="Л")segment(order[1],z);
  arm(order[1],z);
+ if(fit.active)fitDrawOverlay();
  ctx.textAlign="left";ctx.font="11px system-ui";ctx.fillStyle="#bed5e0";
  ctx.fillText("X ↘ 36/18   Y ↙ −36/18",10,H-26);
  ctx.fillText("Мир: x "+s.x.toFixed(2)+"  y "+s.y.toFixed(2)+" | "+
