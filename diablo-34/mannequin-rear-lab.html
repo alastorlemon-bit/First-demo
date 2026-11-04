@@ -919,8 +919,8 @@ function spriteMatrix(part,start,end,tail=false){
  // Сужаем графику и отдельно уменьшаем ладонь ниже лучезапястного шарнира.
  const rearForearm=sheetView==="rear"&&part.endsWith("Forearm");
  const rearTorso=sheetView==="rear"&&part==="torso";
- const handLength=rearForearm&&tail ? .75 : 1;
- const partWidth=rearForearm ? (tail ? .73 : .84) : 1;
+ const handLength=rearForearm&&tail ? .90 : 1;
+ const partWidth=rearForearm ? .84 : 1;
  const along=(tail?ART_LENGTH[part]/srcLen*(distant ? .90 : 1)*handLength:dstLen/srcLen)*cfg.length/100*(rearTorso?1.04:1);
  const across=ART_LENGTH[part]/srcLen*sheet.width*(distant ? .85 : 1)*partWidth*cfg.width/100*(rearTorso?1.12:1);
  const skew=Math.tan(cfg.skew*Math.PI/180);
@@ -1899,6 +1899,33 @@ function runRegressions(){
   Math.abs(rearTorsoScale.length-1.04)<.0001&&
   Math.abs(frontTorsoScale.width-1)<.0001&&
   Math.abs(frontTorsoScale.length-1)<.0001});
+ function handSpriteScale(view,part){
+  const index=view==="rear"?(part==="rightForearm"?5:4):(part==="rightForearm"?1:3);
+  sheetView=view;
+  sheet={image:{naturalWidth:1024,naturalHeight:1536},
+   boxes:Array.from({length:9},()=>({w:200,h:360})),assigned:{[part]:index},width:1};
+  fit.data={[part]:FIT_DEFAULT()};
+  const end={x:120,y:150},m=spriteMatrix(part,{x:100,y:80},end,true);
+  const marks=partAnchors(part),vx=(marks[1][0]-marks[0][0])*200;
+  const vy=(marks[1][1]-marks[0][1])*360,srcLen=Math.hypot(vx,vy);
+  const px=-vy/srcLen,py=vx/srcLen;
+  const width=Math.hypot(m.a*px+m.c*py,m.b*px+m.d*py)*srcLen/ART_LENGTH[part];
+  const a=spritePoint(m,marks[0][0]*200,marks[0][1]*360);
+  const b=spritePoint(m,marks[1][0]*200,marks[1][1]*360);
+  return {width,length:Math.hypot(b.x-a.x,b.y-a.y)/ART_LENGTH[part],
+   wristError:Math.hypot(b.x-end.x,b.y-end.y)};
+ }
+ const nearRearHand=handSpriteScale("rear","rightForearm");
+ const farRearHand=handSpriteScale("rear","leftForearm");
+ const nearFrontHand=handSpriteScale("front","leftForearm");
+ const farFrontHand=handSpriteScale("front","rightForearm");
+ sheet=originalSheet;fit.data=originalFitData;sheetView=originalSpriteView;
+ results.push({test:"кисти сзади увеличены, запястья и передний вид без изменений",ok:
+  Math.abs(nearRearHand.width-.84)<.0001&&Math.abs(nearRearHand.length-.90)<.0001&&
+  Math.abs(farRearHand.width-.714)<.0001&&Math.abs(farRearHand.length-.81)<.0001&&
+  Math.abs(nearFrontHand.width-1)<.0001&&Math.abs(nearFrontHand.length-1)<.0001&&
+  Math.abs(farFrontHand.width-.85)<.0001&&Math.abs(farFrontHand.length-.9)<.0001&&
+  [nearRearHand,farRearHand,nearFrontHand,farFrontHand].every(x=>x.wristError<.0001)});
  // Проба четырёх направлений: одно из двух исходных движений + зеркальная ось.
  const fourDirections=[];
  for(const name of ["SW","SE","NW","NE"]){
